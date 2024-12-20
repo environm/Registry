@@ -23,13 +23,13 @@ const (
 
 type Registry struct {
 	RegistryInterface
-	
+
 	// 服务相关信息
 	ServingInfo *server.ServingInfo
-	
+
 	// 关闭延时
 	ShutdownTimeout time.Duration
-	
+
 	//
 	minRequestTimeout time.Duration
 }
@@ -61,20 +61,20 @@ func (r *Registry) Run(ctx context.Context) error {
 	logs.Info("Running Registry")
 	// TODO: 实现运行逻辑
 	// TODO: channel配置
-	
+
 	//shutdownTimeout := r.ShutdownTimeout
 	//
 	//stopHTTPServerCtx, stopHTTPServer := context.WithCancelCause(context.WithoutCancel(ctx))
 	//go func() {
 	//	defer stopHTTPServer(errors.New("time to stop HTTP server"))
 	//}()
-	
+
 	//
 	err := http.Serve(r.ServingInfo.Listener, nil)
 	if err != nil {
 		logs.Fatalf("Failed to start server: %v", err)
 	}
-	
+
 	logs.Info("Stopping Registry")
 	return nil
 }

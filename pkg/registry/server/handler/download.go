@@ -18,6 +18,8 @@ type DownloadHandler struct {
 	//
 	DataPath string
 	//
+	FileMapping *utils.FileMapping
+	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -25,9 +27,10 @@ func (d *DownloadHandler) GetHandler() func(w http.ResponseWriter, r *http.Reque
 	return d.Handler
 }
 
-func NewDownloadHandler(dataPath string) *DownloadHandler {
+func NewDownloadHandler(dataPath string, fileMapping *utils.FileMapping) *DownloadHandler {
 	dh := &DownloadHandler{
-		DataPath: dataPath,
+		DataPath:    dataPath,
+		FileMapping: fileMapping,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -58,10 +61,11 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 		}
 
 		// 创建 File 实例
-		f := utils.NewFile(fileName, tag)
+		//f := utils.NewFile(fileName, tag)
 
 		// 调用 LoadFile 加载文件
-		file, err := f.LoadFile(d.DataPath)
+		//file, err := f.LoadFile(d.DataPath)
+		file, err := d.FileMapping.LoadFile(fileName, tag, d.DataPath)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error loading file: %v", err), http.StatusNotFound)
 			return
@@ -81,12 +85,14 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 		logs.Infof("File %s (tag: %s) downloaded successfully", fileName, tag)
 
 		// 检查文件是否标记为永久存储
-		isExits, _ := utils.GetIsPermanent(d.DataPath, fileName, tag)
+		//isExits, _ := utils.GetIsPermanent(d.DataPath, fileName, tag)\
+		isExits, _ := d.FileMapping.QueryFile(fileName, tag)
 		fmt.Printf("IsPermanent: %v", isExits)
-		if !isExits {
+		if !isExits.GetIsPermanent() {
 			//if isExits, _ := utils.GetIsPermanent(d.DataPath, fileName, tag); isExits {
 			// 文件未标记为永久存储，下载后删除文件
-			err := f.DeleteFile(d.DataPath)
+			//err := f.DeleteFile(d.DataPath)
+			err := d.FileMapping.DeleteFile(fileName, tag, d.DataPath)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Failed to delete file after download: %v", err), http.StatusInternalServerError)
 				return

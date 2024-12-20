@@ -16,9 +16,9 @@ func TestAddFile(t *testing.T) {
 	fileName := "test.txt"
 	tag := "v1"
 	content := "Hello, World!"
-	err := fm.AddFile(dest, fileName, tag, bytes.NewReader([]byte(content)))
+	err := fm.SaveFile(dest, fileName, tag, false, bytes.NewReader([]byte(content)))
 	if err != nil {
-		t.Errorf("AddFile failed: %v", err)
+		t.Errorf("SaveFile failed: %v", err)
 	}
 
 	file, err := fm.QueryFile(fileName, tag)
@@ -36,7 +36,7 @@ func TestUpdateFile(t *testing.T) {
 	fileName := "test.txt"
 	tag := "v1"
 	content := "Hello, World!"
-	_ = fm.AddFile(dest, fileName, tag, bytes.NewReader([]byte(content)))
+	_ = fm.SaveFile(dest, fileName, tag, false, bytes.NewReader([]byte(content)))
 
 	newContent := "Updated Content!"
 	err := fm.UpdateFile(fileName, tag, bytes.NewReader([]byte(newContent)), dest)
@@ -63,7 +63,7 @@ func TestListFiles(t *testing.T) {
 	fileName := "test.txt"
 	tag := "v1"
 	content := "Hello, World!"
-	_ = fm.AddFile(dest, fileName, tag, bytes.NewReader([]byte(content)))
+	_ = fm.SaveFile(dest, fileName, tag, false, bytes.NewReader([]byte(content)))
 
 	files := fm.ListFiles()
 	if len(files) != 1 || files[0].FileName != fileName {
@@ -77,7 +77,7 @@ func TestDeleteFile(t *testing.T) {
 	fileName := "test.txt"
 	tag := "v1"
 	content := "Hello, World!"
-	_ = fm.AddFile(dest, fileName, tag, bytes.NewReader([]byte(content)))
+	_ = fm.SaveFile(dest, fileName, tag, false, bytes.NewReader([]byte(content)))
 
 	err := fm.DeleteFile(fileName, tag, dest)
 	if err != nil {
@@ -93,8 +93,8 @@ func TestDeleteFile(t *testing.T) {
 func TestSaveFileMapping(t *testing.T) {
 	fm := utils.NewFileMapping()
 	dest := "./test_dir"
-	fm.AddFile(dest, "test.txt", "v1", bytes.NewReader([]byte("Hello, World!")))
-	fm.AddFile(dest, "test2.txt", "v2", bytes.NewReader([]byte("Hello, World2!")))
+	fm.SaveFile(dest, "test.txt", "v1", false, bytes.NewReader([]byte("Hello, World!")))
+	fm.SaveFile(dest, "test2.txt", "v2", false, bytes.NewReader([]byte("Hello, World2!")))
 	jsonPath := dest + "/file_mapping.json"
 	if err := fm.SaveToFile(jsonPath); err != nil {
 		t.Errorf("SaveToFile failed: %v", err)
@@ -114,8 +114,8 @@ func TestLoadFileMapping(t *testing.T) {
 
 	// 准备测试数据并保存为 JSON 文件
 	fm := utils.NewFileMapping()
-	fm.AddFile(tempDir, "test1.txt", "v1", bytes.NewReader([]byte("Content1")))
-	fm.AddFile(tempDir, "test2.txt", "v2", bytes.NewReader([]byte("Content2")))
+	fm.SaveFile(tempDir, "test1.txt", "v1", false, bytes.NewReader([]byte("Content1")))
+	fm.SaveFile(tempDir, "test2.txt", "v2", false, bytes.NewReader([]byte("Content2")))
 	jsonPath := tempDir + "/file_mapping.json"
 	if err := fm.SaveToFile(jsonPath); err != nil {
 		t.Fatalf("failed to save file mapping: %v", err)

@@ -3,6 +3,7 @@ package registry
 import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/registry/server"
+	"hit.edu/framework/pkg/registry/utils"
 	"net"
 	"strconv"
 	"time"
@@ -75,10 +76,12 @@ func NewServingInfo(s *server.ServingOptions) *server.ServingInfo {
 			return nil
 		}
 	}
+	fileMapping := utils.NewFileMapping()
 
 	return &server.ServingInfo{
-		Listener: s.Listener,
-		DataPath: DataPath,
-		Handlers: server.NewRegistryHandler(DataPath),
+		Listener:    s.Listener,
+		DataPath:    DataPath,
+		FileMapping: fileMapping,
+		Handlers:    server.NewRegistryHandler(DataPath, fileMapping),
 	}
 }
