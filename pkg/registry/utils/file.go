@@ -9,11 +9,12 @@ import (
 )
 
 type File struct {
-	FileName   string    `json:"fileName"`
-	Tag        string    `json:"tag"`
-	FilePath   string    `json:"filePath"`
-	Size       int64     `json:"size"`
-	UploadTime time.Time `json:"uploadTime"`
+	FileName    string    `json:"fileName"`
+	Tag         string    `json:"tag"`
+	FilePath    string    `json:"filePath"`
+	Size        int64     `json:"size"`
+	UploadTime  time.Time `json:"uploadTime"`
+	IsPermanent bool      `json:"isPermanent"` // 新增变量，用于标识文件是否需要永久存储
 }
 
 func NewFile(fileName, tag string) *File {
@@ -96,4 +97,27 @@ func (f *File) UpdateFile(dest string, data io.Reader) error {
 
 	// 保存新文件
 	return f.SaveFile(dest, data)
+}
+
+func (f *File) IsExists(dest string) bool {
+	filePath := generateFilePath(dest, f.FileName, f.Tag)
+	return fileExists(filePath)
+}
+
+func (f *File) SetPermanent(isPermanent bool) {
+	f.IsPermanent = isPermanent
+}
+
+// GetIsPermanent 根据文件名和标签获取文件的 IsPermanent 值
+func GetIsPermanent(dest, fileName, tag string) (bool, error) {
+	// 创建 File 实例
+	f := NewFile(fileName, tag)
+
+	// 检查文件是否存在
+	if !f.IsExists(dest) {
+		return false, fmt.Errorf("file not found: %s_%s", fileName, tag)
+	}
+
+	// 返回 IsPermanent 的值
+	return f.IsPermanent, nil
 }
