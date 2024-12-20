@@ -5,7 +5,6 @@ import (
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
 	"path/filepath"
-	"strconv"
 )
 
 // TODO:
@@ -14,6 +13,8 @@ type UploadHandler struct {
 	//
 	DataPath string
 	//
+	FileMapping *utils.FileMapping
+	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -21,9 +22,10 @@ func (d *UploadHandler) GetHandler() func(w http.ResponseWriter, r *http.Request
 	return d.Handler
 }
 
-func NewUploadHandler(dataPath string) *UploadHandler {
+func NewUploadHandler(dataPath string, fileMapping *utils.FileMapping) *UploadHandler {
 	dh := &UploadHandler{
-		DataPath: dataPath,
+		DataPath:    dataPath,
+		FileMapping: fileMapping,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -53,17 +55,18 @@ func (d *UploadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 		}
 
 		// 获取是否需要永久存储的参数（默认为 false）
-		isPermanentStr := r.URL.Query().Get("isPermanent")
-		isPermanent := false // 默认值
-		if isPermanentStr != "" {
-			// 将字符串转换为布尔值
-			var err error
-			isPermanent, err = strconv.ParseBool(isPermanentStr)
-			if err != nil {
-				http.Error(w, "Invalid value for isPermanent (must be true or false)", http.StatusBadRequest)
-				return
-			}
-		}
+		isPermanent := r.URL.Query().Get("isPermanent") == "true"
+
+		//isPermanent := false // 默认值
+		//if isPermanentStr != "" {
+		//	// 将字符串转换为布尔值
+		//	var err error
+		//	isPermanent, err = strconv.ParseBool(isPermanentStr)
+		//	if err != nil {
+		//		http.Error(w, "Invalid value for isPermanent (must be true or false)", http.StatusBadRequest)
+		//		return
+		//	}
+		//}
 
 		// 获取上传的文件
 		file, _, err := r.FormFile("file")
@@ -73,18 +76,23 @@ func (d *UploadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 		}
 		defer file.Close()
 
-		// 创建 File 实例
-		f := utils.NewFile(fileName, tag)
-
-		// 根据 isPermanent 参数设置文件是否为永久存储
-		f.SetPermanent(isPermanent)
-
-		// 使用服务层的 SaveFile 方法保存文件
-		err = f.SaveFile(d.DataPath, file)
+		//// 创建 File 实例
+		//f := utils.NewFile(fileName, tag, isPermanent)
+		err = d.FileMapping.SaveFile(d.DataPath, fileName, tag, isPermanent, file)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("保存文件失败: %v", err), http.StatusInternalServerError)
 			return
 		}
+
+		// 根据 isPermanent 参数设置文件是否为永久存储
+		//f.SetPermanent(isPermanent)
+
+		// 使用服务层的 SaveFile 方法保存文件
+		//err = f.SaveFile(d.DataPath, file)
+		//if err != nil {
+		//	http.Error(w, fmt.Sprintf("保存文件失败: %v", err), http.StatusInternalServerError)
+		//	return
+		//}
 
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte("File uploaded successfully"))

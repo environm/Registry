@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"hit.edu/framework/pkg/registry/utils"
 	"net"
 )
 
@@ -14,6 +15,9 @@ type ServingInfo struct {
 
 	// 数据存储位置
 	DataPath string
+
+	// file mapping
+	FileMapping *utils.FileMapping
 
 	// 各类Handler
 	Handlers *RegistryHandler

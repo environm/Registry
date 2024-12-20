@@ -17,10 +17,14 @@ type File struct {
 	IsPermanent bool      `json:"isPermanent"` // 新增变量，用于标识文件是否需要永久存储
 }
 
-func NewFile(fileName, tag string) *File {
+func NewFile(fileName, tag string, isPermanent bool) *File {
 	return &File{
-		FileName: fileName,
-		Tag:      tag,
+		FileName:    fileName,
+		Tag:         tag,
+		FilePath:    "",
+		Size:        0,
+		UploadTime:  time.Now(),
+		IsPermanent: isPermanent,
 	}
 }
 
@@ -58,7 +62,6 @@ func (f *File) SaveFile(dest string, data io.Reader) (err error) {
 	f.UploadTime = time.Now()
 
 	return nil
-	//return io.Copy(dst, data)
 }
 
 func (f *File) LoadFile(dest string) (file *os.File, err error) {
@@ -109,15 +112,6 @@ func (f *File) SetPermanent(isPermanent bool) {
 }
 
 // GetIsPermanent 根据文件名和标签获取文件的 IsPermanent 值
-func GetIsPermanent(dest, fileName, tag string) (bool, error) {
-	// 创建 File 实例
-	f := NewFile(fileName, tag)
-
-	// 检查文件是否存在
-	if !f.IsExists(dest) {
-		return false, fmt.Errorf("file not found: %s_%s", fileName, tag)
-	}
-
-	// 返回 IsPermanent 的值
-	return f.IsPermanent, nil
+func (f *File) GetIsPermanent() bool {
+	return f.IsPermanent
 }

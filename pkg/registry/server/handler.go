@@ -2,6 +2,7 @@ package server
 
 import (
 	"hit.edu/framework/pkg/registry/server/handler"
+	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
 	"time"
 )
@@ -26,14 +27,14 @@ type RegistryHandler struct {
 	QueryIsExistsHandler handler.Handler
 }
 
-func NewRegistryHandler(dataPath string) *RegistryHandler {
+func NewRegistryHandler(dataPath string, fileMapping *utils.FileMapping) *RegistryHandler {
 	// TODO: Download等改成Handler, 实现ServeHTTP等函数
 	rh := &RegistryHandler{
-		UploadHandler:        handler.NewUploadHandler(dataPath),
-		DownloadHandler:      handler.NewDownloadHandler(dataPath),
-		ForwardHandler:       handler.NewForwardHandler(dataPath),
-		DeleteHandler:        handler.NewDeleteHandler(dataPath),
-		QueryIsExistsHandler: handler.NewQueryIsExistsHandler(dataPath),
+		UploadHandler:        handler.NewUploadHandler(dataPath, fileMapping),
+		DownloadHandler:      handler.NewDownloadHandler(dataPath, fileMapping),
+		ForwardHandler:       handler.NewForwardHandler(dataPath, fileMapping),
+		DeleteHandler:        handler.NewDeleteHandler(dataPath, fileMapping),
+		QueryIsExistsHandler: handler.NewQueryIsExistsHandler(dataPath, fileMapping),
 	}
 
 	// TODO: 临时用法,注册路由

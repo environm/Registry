@@ -18,7 +18,7 @@ func TestSaveFile(t *testing.T) {
 	fileName := "testFile"                 // 文件名
 	tag := "v1"                            // 标签
 	data := []byte("This is a test file.") // 文件内容
-	file := NewFile(fileName, tag)         // 创建文件对象
+	file := NewFile(fileName, tag, false)  // 创建文件对象
 
 	// 保存文件
 	err := file.SaveFile(dest, bytes.NewReader(data))
@@ -48,7 +48,7 @@ func TestLoadFile(t *testing.T) {
 	fileName := "testFile"
 	tag := "v1"
 	data := []byte("This is a test file.") // 文件内容
-	file := NewFile(fileName, tag)
+	file := NewFile(fileName, tag, false)
 
 	// 先保存文件
 	err := file.SaveFile(dest, bytes.NewReader(data))
@@ -73,7 +73,7 @@ func TestDeleteFile(t *testing.T) {
 	fileName := "testFile"
 	tag := "v1"
 	data := []byte("This is a test file.")
-	file := NewFile(fileName, tag)
+	file := NewFile(fileName, tag, false)
 
 	// 先保存文件
 	err := file.SaveFile(dest, bytes.NewReader(data))
@@ -102,7 +102,7 @@ func TestUpdateFile(t *testing.T) {
 	tag := "v1"
 	data := []byte("This is the original file.")       // 原始内容
 	updatedData := []byte("This is the updated file.") // 更新后的内容
-	file := NewFile(fileName, tag)
+	file := NewFile(fileName, tag, false)
 
 	// 先保存文件
 	err := file.SaveFile(dest, bytes.NewReader(data))

@@ -63,8 +63,8 @@ func (fm *FileMapping) getFileKey(fileName, tag string) string {
 	return fmt.Sprintf("%s-%s", fileName, tag)
 }
 
-// AddFile 添加保存新文件
-func (fm *FileMapping) AddFile(dest, fileName, tag string, data io.Reader) error {
+// SaveFile 添加保存新文件
+func (fm *FileMapping) SaveFile(dest, fileName, tag string, isPermanent bool, data io.Reader) error {
 	fm.mutex.Lock()
 	defer fm.mutex.Unlock()
 
@@ -74,7 +74,7 @@ func (fm *FileMapping) AddFile(dest, fileName, tag string, data io.Reader) error
 	}
 
 	// 创建文件对象
-	file := NewFile(fileName, tag)
+	file := NewFile(fileName, tag, isPermanent)
 	err := file.SaveFile(dest, data)
 	if err != nil {
 		return err
@@ -83,6 +83,20 @@ func (fm *FileMapping) AddFile(dest, fileName, tag string, data io.Reader) error
 	// 将文件信息添加到映射中
 	fm.files[key] = *file
 	return nil
+}
+
+// LoadFile 根据文件名和标签加载文件
+func (fm *FileMapping) LoadFile(fileName, tag string, dest string) (*os.File, error) {
+	fm.mutex.Lock()
+	defer fm.mutex.Unlock()
+
+	key := fm.getFileKey(fileName, tag)
+	file, exists := fm.files[key]
+	if !exists {
+		return nil, fmt.Errorf("file not found: %s", key)
+	}
+	// 加载文件
+	return file.LoadFile(dest)
 }
 
 // DeleteFile 根据文件名和标签删除文件
@@ -136,7 +150,7 @@ func (fm *FileMapping) QueryFile(fileName, tag string) (*File, error) {
 	key := fm.getFileKey(fileName, tag)
 	file, exists := fm.files[key]
 	if !exists {
-		return nil, fmt.Errorf("file not found")
+		return nil, fmt.Errorf("file not found: %s", key)
 	}
 	return &file, nil
 }

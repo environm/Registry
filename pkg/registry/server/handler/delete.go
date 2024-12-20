@@ -16,6 +16,8 @@ type DeleteHandler struct {
 	//
 	DataPath string
 	//
+	FileMapping *utils.FileMapping
+	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -23,9 +25,10 @@ func (d *DeleteHandler) GetHandler() func(w http.ResponseWriter, r *http.Request
 	return d.Handler
 }
 
-func NewDeleteHandler(dataPath string) *DeleteHandler {
+func NewDeleteHandler(dataPath string, fileMapping *utils.FileMapping) *DeleteHandler {
 	dh := &DeleteHandler{
-		DataPath: dataPath,
+		DataPath:    dataPath,
+		FileMapping: fileMapping,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -56,10 +59,11 @@ func (d *DeleteHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 		}
 
 		// 创建 File 实例
-		f := utils.NewFile(fileName, tag)
+		//f := utils.NewFile(fileName, tag)
 
 		// 调用 service 层的 DeleteFile 方法删除文件
-		err := f.DeleteFile(d.DataPath)
+		//err := f.DeleteFile(d.DataPath)
+		err := d.FileMapping.DeleteFile(fileName, tag, d.DataPath)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to delete file: %v", err), http.StatusInternalServerError)
 			return

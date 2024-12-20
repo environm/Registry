@@ -16,6 +16,8 @@ type ForwardHandler struct {
 	//
 	DataPath string
 	//
+	FileMapping *utils.FileMapping
+	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -23,9 +25,10 @@ func (d *ForwardHandler) GetHandler() func(w http.ResponseWriter, r *http.Reques
 	return d.Handler
 }
 
-func NewForwardHandler(dataPath string) *ForwardHandler {
+func NewForwardHandler(dataPath string, fileMapping *utils.FileMapping) *ForwardHandler {
 	dh := &ForwardHandler{
-		DataPath: dataPath,
+		DataPath:    dataPath,
+		FileMapping: fileMapping,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -68,8 +71,8 @@ func (d *ForwardHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 		logs.Infof("Forwarding to URL: %s", targetURL)
 
 		// 创建 File 实例并加载文件
-		f := utils.NewFile(fileName, tag)
-		file, err := f.LoadFile(d.DataPath)
+		//f := utils.NewFile(fileName, tag)
+		file, err := d.FileMapping.LoadFile(fileName, tag, d.DataPath)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to load file: %v", err), http.StatusNotFound)
 			logs.Infof("Error loading file %s: %v", fileName, err)

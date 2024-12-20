@@ -16,6 +16,8 @@ type QueryIsExistsHandler struct {
 	//
 	DataPath string
 	//
+	FileMapping *utils.FileMapping
+	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -23,9 +25,10 @@ func (d *QueryIsExistsHandler) GetHandler() func(w http.ResponseWriter, r *http.
 	return d.Handler
 }
 
-func NewQueryIsExistsHandler(dataPath string) *QueryIsExistsHandler {
+func NewQueryIsExistsHandler(dataPath string, fileMapping *utils.FileMapping) *QueryIsExistsHandler {
 	dh := &QueryIsExistsHandler{
-		DataPath: dataPath,
+		DataPath:    dataPath,
+		FileMapping: fileMapping,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -56,10 +59,15 @@ func (d *QueryIsExistsHandler) NewHandlerFunc() func(w http.ResponseWriter, r *h
 		}
 
 		// 创建 File 实例并调用 IsExists 检查文件是否存在
-		f := utils.NewFile(fileName, tag)
-		exists := f.IsExists(d.DataPath)
+		//f := utils.NewFile(fileName, tag)
+		//exists := f.IsExists(d.DataPath)
+		exists, err := d.FileMapping.QueryFile(fileName, tag)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("查询文件失败: %v", err), http.StatusInternalServerError)
+			return
+		}
 
-		if exists {
+		if exists != nil {
 			// 文件存在，返回 200 OK
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(fmt.Sprintf("File %s (tag: %s) exists", fileName, tag)))
