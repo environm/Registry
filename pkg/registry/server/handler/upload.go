@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"hit.edu/framework/pkg/component-base/logs"
+	"fmt"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
 	"path/filepath"
@@ -13,6 +13,8 @@ type UploadHandler struct {
 	//
 	DataPath string
 	//
+	FileMapping *utils.FileMapping
+	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -20,9 +22,10 @@ func (d *UploadHandler) GetHandler() func(w http.ResponseWriter, r *http.Request
 	return d.Handler
 }
 
-func NewUploadHandler(dataPath string) *UploadHandler {
+func NewUploadHandler(dataPath string, fileMapping *utils.FileMapping) *UploadHandler {
 	dh := &UploadHandler{
-		DataPath: dataPath,
+		DataPath:    dataPath,
+		FileMapping: fileMapping,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -36,7 +39,7 @@ func (d *UploadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 			http.Error(w, "Only POST is supported", http.StatusMethodNotAllowed)
 			return
 		}
-		
+
 		// 获取文件名（从 URL 参数或者 Header 中获取）
 		fileName := r.URL.Query().Get("filename")
 		if fileName == "" {
@@ -44,27 +47,53 @@ func (d *UploadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 			return
 		}
 		fileName = filepath.Clean(fileName)
-		
-		//调用文件保存函数
-		written, err := utils.SaveFile(d.DataPath, fileName, r.Body)
+
+		// 获取标签（如果没有提供，则设置默认标签）
+		tag := r.URL.Query().Get("tag")
+		if tag == "" {
+			tag = "v1.0.0" // 默认标签
+		}
+
+		// 获取是否需要永久存储的参数（默认为 false）
+		isPermanent := r.URL.Query().Get("isPermanent") == "true"
+
+		//isPermanent := false // 默认值
+		//if isPermanentStr != "" {
+		//	// 将字符串转换为布尔值
+		//	var err error
+		//	isPermanent, err = strconv.ParseBool(isPermanentStr)
+		//	if err != nil {
+		//		http.Error(w, "Invalid value for isPermanent (must be true or false)", http.StatusBadRequest)
+		//		return
+		//	}
+		//}
+
+		// 获取上传的文件
+		file, _, err := r.FormFile("file")
 		if err != nil {
-			http.Error(w, "Failed to save file", http.StatusInternalServerError)
-			logs.Infof("Error saving file: %v", err)
+			http.Error(w, "无法获取文件", http.StatusBadRequest)
 			return
 		}
-		
-		//// 存储到内存
-		//buf := new(bytes.Buffer)
-		//written, err := io.Copy(buf, r.Body)
+		defer file.Close()
+
+		//// 创建 File 实例
+		//f := utils.NewFile(fileName, tag, isPermanent)
+		err = d.FileMapping.SaveFile(d.DataPath, fileName, tag, isPermanent, file)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("保存文件失败: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		// 根据 isPermanent 参数设置文件是否为永久存储
+		//f.SetPermanent(isPermanent)
+
+		// 使用服务层的 SaveFile 方法保存文件
+		//err = f.SaveFile(d.DataPath, file)
 		//if err != nil {
-		//	http.Error(w, "Failed to read file content", http.StatusInternalServerError)
-		//	log.Printf("Error reading file content: %v", err)
+		//	http.Error(w, fmt.Sprintf("保存文件失败: %v", err), http.StatusInternalServerError)
 		//	return
 		//}
-		//log.Printf("Received %d bytes from client", written)
-		
-		// 返回成功响应
-		logs.Infof("File %s uploaded successfully, size: %d bytes", fileName, written)
+
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte("File uploaded successfully"))
 	}
