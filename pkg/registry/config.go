@@ -78,10 +78,13 @@ func NewServingInfo(s *server.ServingOptions) *server.ServingInfo {
 	}
 	fileMapping := utils.NewFileMapping()
 
+	subscribers := utils.NewSubscriptionManager()
+
 	return &server.ServingInfo{
 		Listener:    s.Listener,
 		DataPath:    DataPath,
 		FileMapping: fileMapping,
-		Handlers:    server.NewRegistryHandler(DataPath, fileMapping),
+		Subscribers: subscribers,
+		Handlers:    server.NewRegistryHandler(DataPath, fileMapping, subscribers),
 	}
 }

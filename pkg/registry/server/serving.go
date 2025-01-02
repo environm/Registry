@@ -19,6 +19,9 @@ type ServingInfo struct {
 	// file mapping
 	FileMapping *utils.FileMapping
 
+	// 订阅者列表
+	Subscribers *utils.SubscriptionManager
+
 	// 各类Handler
 	Handlers *RegistryHandler
 

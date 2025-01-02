@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -17,6 +19,46 @@ func NewFileMapping() *FileMapping {
 	return &FileMapping{
 		files: make(map[string]File),
 	}
+}
+
+// InitializeFromDirectory 遍历目录并初始化文件映射
+func (fm *FileMapping) InitializeFromDirectory(dirPath string) error {
+	fm.mutex.Lock()
+	defer fm.mutex.Unlock()
+
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// 跳过目录
+		if info.IsDir() {
+			return nil
+		}
+
+		// 获取文件名和扩展名
+		fileName := info.Name()
+		ext := filepath.Ext(fileName)
+		baseName := strings.TrimSuffix(fileName, ext)
+
+		// 假设文件名格式为 "fileName_tag.ext"，通过分割获取 fileName 和 tag
+		parts := strings.SplitN(baseName, "_", 2)
+		if len(parts) != 2 {
+			// 如果文件名不符合格式，忽略
+			fmt.Printf("Skipping file with unexpected name format: %s\n", fileName)
+			return nil
+		}
+		fileName, tag := parts[0], parts[1]
+
+		// 创建文件对象并存储到映射中
+		fm.files[fm.getFileKey(fileName, tag)] = *NewFile(fileName, tag, true)
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("error while walking directory %s: %v", dirPath, err)
+	}
+	return nil
 }
 
 // 转化为 josn 文件
@@ -60,7 +102,7 @@ func (fm *FileMapping) LoadFromFile(filePath string) error {
 
 // getFileKey 获取文件 key
 func (fm *FileMapping) getFileKey(fileName, tag string) string {
-	return fmt.Sprintf("%s-%s", fileName, tag)
+	return fmt.Sprintf("%s_%s", fileName, tag)
 }
 
 // SaveFile 添加保存新文件

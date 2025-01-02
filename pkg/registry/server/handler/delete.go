@@ -44,8 +44,11 @@ func (d *DeleteHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 			return
 		}
 
+		param := r.URL.Query()
+
 		// 获取文件名参数
-		fileName := r.URL.Query().Get("fileName")
+		fileName := utils.GetQueryParamCaseInsensitive(param, "filename")
+		//fileName := r.URL.Query().Get("filename")
 		if fileName == "" {
 			http.Error(w, "Filename is required", http.StatusBadRequest)
 			return
@@ -53,7 +56,8 @@ func (d *DeleteHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 		fileName = filepath.Clean(fileName) // 清理路径，防止路径遍历攻击
 
 		// 获取标签参数（如果未提供，使用默认值）
-		tag := r.URL.Query().Get("tag")
+		//tag := r.URL.Query().Get("tag")
+		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
 		if tag == "" {
 			tag = "v1.0.0"
 		}

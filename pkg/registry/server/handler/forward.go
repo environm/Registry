@@ -42,9 +42,11 @@ func (d *ForwardHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 			http.Error(w, "Only POST is supported", http.StatusMethodNotAllowed)
 			return
 		}
-
+		// 获取参数
+		param := r.URL.Query()
 		// 获取文件名
-		fileName := r.URL.Query().Get("fileName")
+		//fileName := r.URL.Query().Get("filename")
+		fileName := utils.GetQueryParamCaseInsensitive(param, "filename")
 		if fileName == "" {
 			http.Error(w, "Filename is required", http.StatusBadRequest)
 			logs.Infof("Filename missing in request")
@@ -53,13 +55,15 @@ func (d *ForwardHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 		fileName = filepath.Clean(fileName)
 
 		// 获取标签
-		tag := r.URL.Query().Get("tag")
+		//tag := r.URL.Query().Get("tag")
+		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
 		if tag == "" {
 			tag = "v1.0.0" // 设置默认标签
 		}
 
 		// 获取目标地址
-		targetURL := r.URL.Query().Get("target")
+		//targetURL := r.URL.Query().Get("target")
+		targetURL := utils.GetQueryParamCaseInsensitive(param, "target")
 		if targetURL == "" {
 			http.Error(w, "Target URL is required for forwarding", http.StatusBadRequest)
 			logs.Infof("Target URL missing in request")
@@ -97,7 +101,7 @@ func (d *ForwardHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 		}
 
 		// 设置 Content-Type
-		req.Header.Set("Content-Type", "application/octet-stream")
+		req.Header.Set("Content-Type", "multipart/form-data")
 
 		// 发送请求
 		client := &http.Client{}
