@@ -14,7 +14,7 @@ const baseURL = "http://localhost:8081"
 // 测试 GET 请求
 func TestGetFile(t *testing.T) {
 	// 发送 GET 请求来获取文件
-	resp, err := http.Get(fmt.Sprintf("%s/download?filename=1.txt", baseURL))
+	resp, err := http.Get(fmt.Sprintf("%s/download?filename=1_v2.txt", baseURL))
 	if err != nil {
 		t.Fatalf("Failed to make GET request: %v", err)
 	}

@@ -45,9 +45,11 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 			http.Error(w, "Only GET is supported", http.StatusMethodNotAllowed)
 			return
 		}
-
+		// 获取参数
+		param := r.URL.Query()
 		// 获取文件名
-		fileName := r.URL.Query().Get("filename")
+		//fileName := r.URL.Query().Get("filename")
+		fileName := utils.GetQueryParamCaseInsensitive(param, "filename")
 		if fileName == "" {
 			http.Error(w, "Filename is required", http.StatusBadRequest)
 			return
@@ -55,7 +57,8 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 		fileName = filepath.Clean(fileName)
 
 		// 从 URL 查询参数中获取文件标签（可选）
-		tag := r.URL.Query().Get("tag")
+		//tag := r.URL.Query().Get("tag")
+		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
 		if tag == "" {
 			tag = "v1.0.0" // 默认标签
 		}
@@ -85,7 +88,7 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 		logs.Infof("File %s (tag: %s) downloaded successfully", fileName, tag)
 
 		// 检查文件是否标记为永久存储
-		//isExits, _ := utils.GetIsPermanent(d.DataPath, fileName, tag)\
+		//isExits, _ := utils.GetIsPermanent(d.DataPath, fileName, tag)
 		isExits, _ := d.FileMapping.QueryFile(fileName, tag)
 		fmt.Printf("IsPermanent: %v", isExits)
 		if !isExits.GetIsPermanent() {

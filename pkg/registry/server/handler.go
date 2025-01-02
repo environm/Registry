@@ -25,9 +25,13 @@ type RegistryHandler struct {
 	// 处理文件查询
 	// TODO:
 	QueryIsExistsHandler handler.Handler
+	// 处理文件列表查询
+	QueryListHandler handler.Handler
+	// 处理文件订阅
+	SubscribeHandler handler.Handler
 }
 
-func NewRegistryHandler(dataPath string, fileMapping *utils.FileMapping) *RegistryHandler {
+func NewRegistryHandler(dataPath string, fileMapping *utils.FileMapping, subscribers *utils.SubscriptionManager) *RegistryHandler {
 	// TODO: Download等改成Handler, 实现ServeHTTP等函数
 	rh := &RegistryHandler{
 		UploadHandler:        handler.NewUploadHandler(dataPath, fileMapping),
@@ -35,6 +39,8 @@ func NewRegistryHandler(dataPath string, fileMapping *utils.FileMapping) *Regist
 		ForwardHandler:       handler.NewForwardHandler(dataPath, fileMapping),
 		DeleteHandler:        handler.NewDeleteHandler(dataPath, fileMapping),
 		QueryIsExistsHandler: handler.NewQueryIsExistsHandler(dataPath, fileMapping),
+		QueryListHandler:     handler.NewQueryListHandler(dataPath, fileMapping),
+		SubscribeHandler:     handler.NewSubscribeHandler(subscribers),
 	}
 
 	// TODO: 临时用法,注册路由
@@ -43,6 +49,8 @@ func NewRegistryHandler(dataPath string, fileMapping *utils.FileMapping) *Regist
 	http.HandleFunc("/forward", rh.ForwardHandler.GetHandler())
 	http.HandleFunc("/delete", rh.DeleteHandler.GetHandler())
 	http.HandleFunc("/query/exits", rh.QueryIsExistsHandler.GetHandler())
+	http.HandleFunc("/query/list", rh.QueryListHandler.GetHandler())
+	http.HandleFunc("/subscribe", rh.SubscribeHandler.GetHandler())
 
 	return rh
 }

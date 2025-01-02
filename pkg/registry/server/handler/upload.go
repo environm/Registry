@@ -39,9 +39,11 @@ func (d *UploadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 			http.Error(w, "Only POST is supported", http.StatusMethodNotAllowed)
 			return
 		}
-
+		// 获取参数
+		param := r.URL.Query()
 		// 获取文件名（从 URL 参数或者 Header 中获取）
-		fileName := r.URL.Query().Get("filename")
+		//fileName := r.URL.Query().Get("filename")
+		fileName := utils.GetQueryParamCaseInsensitive(param, "filename")
 		if fileName == "" {
 			http.Error(w, "Filename is required", http.StatusBadRequest)
 			return
@@ -49,13 +51,15 @@ func (d *UploadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 		fileName = filepath.Clean(fileName)
 
 		// 获取标签（如果没有提供，则设置默认标签）
-		tag := r.URL.Query().Get("tag")
+		//tag := r.URL.Query().Get("tag")
+		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
 		if tag == "" {
 			tag = "v1.0.0" // 默认标签
 		}
 
 		// 获取是否需要永久存储的参数（默认为 false）
-		isPermanent := r.URL.Query().Get("isPermanent") == "true"
+		isPermanent := utils.GetQueryParamCaseInsensitive(param, "isPermanent") == "true"
+		//isPermanent := r.URL.Query().Get("isPermanent") == "true"
 
 		//isPermanent := false // 默认值
 		//if isPermanentStr != "" {
