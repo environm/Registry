@@ -1,0 +1,120 @@
+package utils
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+)
+
+// sendFile 发送文件内容到服务器
+func sendFile(rootPath, filePath string, parentPath string, url string) error {
+	// 打开文件
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %v", filePath, err)
+	}
+	defer file.Close()
+
+	// 获取文件信息
+	info, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get file info %s: %v", filePath, err)
+	}
+
+	// 读取文件内容
+	fileContent := make([]byte, info.Size())
+	_, err = file.Read(fileContent)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("failed to read file content %s: %v", filePath, err)
+	}
+
+	// 构建 HTTP 请求体
+	body := bytes.NewBuffer(fileContent)
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP request: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("File-Name", filepath.Base(filePath)) // 文件名
+	req.Header.Set("Parent-Path", parentPath)            // 父目录路径
+	req.Header.Set("rootPath", rootPath)                 // 根目录路径
+
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	fmt.Printf("File uploaded successfully: %s\n", filePath)
+	return nil
+}
+
+// sendDir 发送目录信息到服务器
+func sendDir(rootPath, dirPath string, parentPath string, url string) error {
+	// 构建目录信息
+	dirInfo := fmt.Sprintf("DIR:%s", dirPath)
+	body := bytes.NewBuffer([]byte(dirInfo))
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return fmt.Errorf("failed to create directory request: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/text")
+	req.Header.Set("Directory-Name", filepath.Base(dirPath)) // 目录名
+	req.Header.Set("Parent-Path", parentPath)                // 父目录路径
+	req.Header.Set("rootPath", rootPath)                     // 根目录路径
+
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send directory request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	fmt.Printf("Directory uploaded successfully: %s\n", dirPath)
+	return nil
+}
+
+// traverse 遍历目录并发送文件或目录信息
+func traverse(rootPath string, url string) error {
+	// 确保路径规范化
+	rootPath = filepath.Clean(rootPath)
+
+	// 遍历子目录和文件
+	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error walking through files: %v", err)
+		}
+
+		// 获取父目录路径
+		parentPath := filepath.Dir(path)
+
+		// 如果是目录，发送目录信息
+		if info.IsDir() {
+			// 忽略根目录，因为它已经被处理过
+			if path != rootPath {
+				err := sendDir(rootPath, path, parentPath, url)
+				if err != nil {
+					return fmt.Errorf("failed to send directory: %v", err)
+				}
+			}
+		} else {
+			// 如果是文件，发送文件内容
+			err := sendFile(rootPath, path, parentPath, url)
+			if err != nil {
+				return fmt.Errorf("failed to send file: %v", err)
+			}
+		}
+		return nil
+	})
+	return err
+}
