@@ -29,18 +29,24 @@ type RegistryHandler struct {
 	QueryListHandler handler.Handler
 	// 处理文件订阅
 	SubscribeHandler handler.Handler
+	// 处理文件目录上传
+	CatalogueUploadHandler handler.Handler
+	// 处理文件目录下载
+	CatalogueDownloadHandler handler.Handler
 }
 
 func NewRegistryHandler(dataPath string, fileMapping *utils.FileMapping, subscribers *utils.SubscriptionManager) *RegistryHandler {
 	// TODO: Download等改成Handler, 实现ServeHTTP等函数
 	rh := &RegistryHandler{
-		UploadHandler:        handler.NewUploadHandler(dataPath, fileMapping),
-		DownloadHandler:      handler.NewDownloadHandler(dataPath, fileMapping),
-		ForwardHandler:       handler.NewForwardHandler(dataPath, fileMapping),
-		DeleteHandler:        handler.NewDeleteHandler(dataPath, fileMapping),
-		QueryIsExistsHandler: handler.NewQueryIsExistsHandler(dataPath, fileMapping),
-		QueryListHandler:     handler.NewQueryListHandler(dataPath, fileMapping),
-		SubscribeHandler:     handler.NewSubscribeHandler(subscribers),
+		UploadHandler:            handler.NewUploadHandler(dataPath, fileMapping),
+		DownloadHandler:          handler.NewDownloadHandler(dataPath, fileMapping),
+		ForwardHandler:           handler.NewForwardHandler(dataPath, fileMapping),
+		DeleteHandler:            handler.NewDeleteHandler(dataPath, fileMapping),
+		QueryIsExistsHandler:     handler.NewQueryIsExistsHandler(dataPath, fileMapping),
+		QueryListHandler:         handler.NewQueryListHandler(dataPath, fileMapping),
+		SubscribeHandler:         handler.NewSubscribeHandler(subscribers),
+		CatalogueUploadHandler:   handler.NewCatalogueUploadHandler(dataPath, fileMapping),
+		CatalogueDownloadHandler: handler.NewCatalogueDownloadHandler(dataPath, fileMapping),
 	}
 
 	// TODO: 临时用法,注册路由
@@ -51,6 +57,7 @@ func NewRegistryHandler(dataPath string, fileMapping *utils.FileMapping, subscri
 	http.HandleFunc("/query/exits", rh.QueryIsExistsHandler.GetHandler())
 	http.HandleFunc("/query/list", rh.QueryListHandler.GetHandler())
 	http.HandleFunc("/subscribe", rh.SubscribeHandler.GetHandler())
-
+	http.HandleFunc("/catalogueUpload", rh.CatalogueUploadHandler.GetHandler())
+	http.HandleFunc("/catalogueDownload", rh.CatalogueDownloadHandler.GetHandler())
 	return rh
 }

@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -207,4 +209,62 @@ func (fm *FileMapping) ListFiles() []File {
 		filesList = append(filesList, file)
 	}
 	return filesList
+}
+
+func (fm *FileMapping) CreateDir(dirPath string) error {
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		err := os.MkdirAll(dirPath, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to create directory %s: %v", dirPath, err)
+		}
+		fmt.Printf("Directory created: %s\n", dirPath)
+	} else {
+		fmt.Printf("Directory already exists: %s\n", dirPath)
+	}
+	return nil
+}
+
+// zipAndDownload 压缩目录并返回压缩文件
+func (fm *FileMapping) ZipAndDownload(w http.ResponseWriter, dirPath, zipFileName string) error {
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.zip\"", zipFileName))
+	w.Header().Set("Content-Type", "application/zip")
+
+	zipWriter := zip.NewWriter(w)
+	defer zipWriter.Close()
+
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// 计算相对路径
+		relPath, err := filepath.Rel(dirPath, path)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			// 如果是目录，在 ZIP 中添加目录条目
+			_, err = zipWriter.Create(fmt.Sprintf("%s/", relPath))
+			return err
+		}
+
+		// 如果是文件，添加文件条目
+		fileWriter, err := zipWriter.Create(relPath)
+		if err != nil {
+			return err
+		}
+
+		// 打开文件并写入到 ZIP
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		_, err = io.Copy(fileWriter, file)
+		return err
+	})
+
+	return err
 }

@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -67,13 +66,15 @@ func TestSendDirAndRestore(t *testing.T) {
 
 	//defer cleanUpDir(testRootDir)
 
-	baseDir := "./Test"
-	// 模拟一个上传请求的服务器
-	server := httptest.NewServer(createTestHandler(baseDir))
-	defer server.Close()
+	//baseDir := "./Test"
+	//// 模拟一个上传请求的服务器
+	//server := httptest.NewServer(createTestHandler(baseDir))
+	//defer server.Close()
+
+	url := "http://127.0.0.1:8081/catalogueUpload"
 
 	// 发送文件夹
-	err = traverse(testRootDir, server.URL)
+	err = traverse(testRootDir, url)
 	if err != nil {
 		t.Fatalf("sendDir failed: %v", err)
 	}
