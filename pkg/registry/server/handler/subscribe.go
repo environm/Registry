@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
 	"path/filepath"
@@ -13,7 +14,7 @@ import (
 // TODO:
 type SubscribeHandler struct {
 	//
-	Subscribers *utils.SubscriptionManager
+	Subscribers *data.SubscriptionManager
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -22,7 +23,7 @@ func (d *SubscribeHandler) GetHandler() func(w http.ResponseWriter, r *http.Requ
 	return d.Handler
 }
 
-func NewSubscribeHandler(subscribers *utils.SubscriptionManager) *SubscribeHandler {
+func NewSubscribeHandler(subscribers *data.SubscriptionManager) *SubscribeHandler {
 	dh := &SubscribeHandler{
 		Subscribers: subscribers,
 	}

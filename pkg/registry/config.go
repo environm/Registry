@@ -2,8 +2,8 @@ package registry
 
 import (
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/server"
-	"hit.edu/framework/pkg/registry/utils"
 	"net"
 	"strconv"
 	"time"
@@ -76,9 +76,9 @@ func NewServingInfo(s *server.ServingOptions) *server.ServingInfo {
 			return nil
 		}
 	}
-	fileMapping := utils.NewFileMapping()
+	fileMapping := data.NewFileMapping()
 
-	subscribers := utils.NewSubscriptionManager()
+	subscribers := data.NewSubscriptionManager()
 
 	return &server.ServingInfo{
 		Listener:    s.Listener,

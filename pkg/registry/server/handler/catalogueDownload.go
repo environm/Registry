@@ -2,7 +2,7 @@ package handler
 
 import (
 	"fmt"
-	"hit.edu/framework/pkg/registry/utils"
+	"hit.edu/framework/pkg/registry/data"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,7 +14,7 @@ type CatalogueDownloadHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *utils.FileMapping
+	FileMapping *data.FileMapping
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -23,7 +23,7 @@ func (d *CatalogueDownloadHandler) GetHandler() func(w http.ResponseWriter, r *h
 	return d.Handler
 }
 
-func NewCatalogueDownloadHandler(dataPath string, fileMapping *utils.FileMapping) *CatalogueDownloadHandler {
+func NewCatalogueDownloadHandler(dataPath string, fileMapping *data.FileMapping) *CatalogueDownloadHandler {
 	dh := &CatalogueDownloadHandler{
 		DataPath:    dataPath,
 		FileMapping: fileMapping,

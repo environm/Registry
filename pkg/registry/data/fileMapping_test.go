@@ -1,17 +1,16 @@
-package utils_test
+package data
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"hit.edu/framework/pkg/registry/utils"
 	"io/ioutil"
 	"os"
 	"testing"
 )
 
 func TestAddFile(t *testing.T) {
-	fm := utils.NewFileMapping()
+	fm := NewFileMapping()
 	dest := "./test_dir"
 	fileName := "test.txt"
 	tag := "v1"
@@ -31,7 +30,7 @@ func TestAddFile(t *testing.T) {
 }
 
 func TestUpdateFile(t *testing.T) {
-	fm := utils.NewFileMapping()
+	fm := NewFileMapping()
 	dest := "./test_dir"
 	fileName := "test.txt"
 	tag := "v1"
@@ -58,7 +57,7 @@ func TestUpdateFile(t *testing.T) {
 }
 
 func TestListFiles(t *testing.T) {
-	fm := utils.NewFileMapping()
+	fm := NewFileMapping()
 	dest := "./test_dir"
 	fileName := "test.txt"
 	tag := "v1"
@@ -78,7 +77,7 @@ func TestListFiles(t *testing.T) {
 }
 
 func TestDeleteFile(t *testing.T) {
-	fm := utils.NewFileMapping()
+	fm := NewFileMapping()
 	dest := "./test_dir"
 	fileName := "test.txt"
 	tag := "v1"
@@ -97,7 +96,7 @@ func TestDeleteFile(t *testing.T) {
 }
 
 func TestSaveFileMapping(t *testing.T) {
-	fm := utils.NewFileMapping()
+	fm := NewFileMapping()
 	dest := "./test_dir"
 	fm.SaveFile(dest, "test.txt", "v1", false, bytes.NewReader([]byte("Hello, World!")))
 	fm.SaveFile(dest, "test2.txt", "v2", false, bytes.NewReader([]byte("Hello, World2!")))
@@ -119,7 +118,7 @@ func TestLoadFileMapping(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// 准备测试数据并保存为 JSON 文件
-	fm := utils.NewFileMapping()
+	fm := NewFileMapping()
 	fm.SaveFile(tempDir, "test1.txt", "v1", false, bytes.NewReader([]byte("Content1")))
 	fm.SaveFile(tempDir, "test2.txt", "v2", false, bytes.NewReader([]byte("Content2")))
 	jsonPath := tempDir + "/file_mapping.json"
@@ -128,7 +127,7 @@ func TestLoadFileMapping(t *testing.T) {
 	}
 
 	// 加载 JSON 文件并打印内容
-	loadedFM := utils.NewFileMapping()
+	loadedFM := NewFileMapping()
 	if err := loadedFM.LoadFromFile(jsonPath); err != nil {
 		t.Errorf("LoadFromFile failed: %v", err)
 	}

@@ -1,4 +1,4 @@
-package utils
+package data
 
 import (
 	"fmt"
@@ -8,19 +8,28 @@ import (
 	"time"
 )
 
+type FileType string
+
+const (
+	FileTypeFile   FileType = "file"
+	FileTypeFolder FileType = "folder"
+)
+
 type File struct {
 	FileName    string    `json:"fileName"`
 	Tag         string    `json:"tag"`
+	Type        FileType  `json:"type"`
 	FilePath    string    `json:"filePath"`
 	Size        int64     `json:"size"`
 	UploadTime  time.Time `json:"uploadTime"`
 	IsPermanent bool      `json:"isPermanent"` // 新增变量，用于标识文件是否需要永久存储
 }
 
-func NewFile(fileName, tag string, isPermanent bool) *File {
+func NewFile(fileName, tag string, fileType FileType, isPermanent bool) *File {
 	return &File{
 		FileName:    fileName,
 		Tag:         tag,
+		Type:        fileType,
 		FilePath:    "",
 		Size:        0,
 		UploadTime:  time.Now(),

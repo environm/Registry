@@ -33,8 +33,8 @@ func createDir(dirPath string) error {
 //	}
 //}
 
-// uploadHandler 接收文件和目录信息，并正确创建或存储
-func uploadHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
+// ReceiveDir 接收文件和目录信息，并正确创建或存储
+func ReceiveDir(w http.ResponseWriter, r *http.Request, baseDir string) {
 	// 确保 BaseDir 不为空
 	if baseDir == "" {
 		http.Error(w, "BaseDir is not set", http.StatusInternalServerError)

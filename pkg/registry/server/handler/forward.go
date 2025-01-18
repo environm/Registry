@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"io"
 	"net/http"
@@ -16,7 +17,7 @@ type ForwardHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *utils.FileMapping
+	FileMapping *data.FileMapping
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -25,7 +26,7 @@ func (d *ForwardHandler) GetHandler() func(w http.ResponseWriter, r *http.Reques
 	return d.Handler
 }
 
-func NewForwardHandler(dataPath string, fileMapping *utils.FileMapping) *ForwardHandler {
+func NewForwardHandler(dataPath string, fileMapping *data.FileMapping) *ForwardHandler {
 	dh := &ForwardHandler{
 		DataPath:    dataPath,
 		FileMapping: fileMapping,
@@ -71,7 +72,7 @@ func (d *ForwardHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 		}
 
 		// 在目标 URL 中添加 filename 和 tag 参数
-		targetURL = fmt.Sprintf("%s/post?filename=%s&tag=%s", targetURL, fileName, tag)
+		targetURL = fmt.Sprintf("%s/receive?filename=%s&tag=%s", targetURL, fileName, tag)
 		logs.Infof("Forwarding to URL: %s", targetURL)
 
 		// 创建 File 实例并加载文件

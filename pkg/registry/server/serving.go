@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"hit.edu/framework/pkg/registry/utils"
+	"hit.edu/framework/pkg/registry/data"
 	"net"
 )
 
@@ -17,10 +17,10 @@ type ServingInfo struct {
 	DataPath string
 
 	// file mapping
-	FileMapping *utils.FileMapping
+	FileMapping *data.FileMapping
 
 	// 订阅者列表
-	Subscribers *utils.SubscriptionManager
+	Subscribers *data.SubscriptionManager
 
 	// 各类Handler
 	Handlers *RegistryHandler

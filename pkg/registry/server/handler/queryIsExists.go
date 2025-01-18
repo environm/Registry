@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
 	"path/filepath"
@@ -16,7 +17,7 @@ type QueryIsExistsHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *utils.FileMapping
+	FileMapping *data.FileMapping
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -25,7 +26,7 @@ func (d *QueryIsExistsHandler) GetHandler() func(w http.ResponseWriter, r *http.
 	return d.Handler
 }
 
-func NewQueryIsExistsHandler(dataPath string, fileMapping *utils.FileMapping) *QueryIsExistsHandler {
+func NewQueryIsExistsHandler(dataPath string, fileMapping *data.FileMapping) *QueryIsExistsHandler {
 	dh := &QueryIsExistsHandler{
 		DataPath:    dataPath,
 		FileMapping: fileMapping,

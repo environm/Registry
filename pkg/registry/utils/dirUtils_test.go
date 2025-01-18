@@ -52,7 +52,7 @@ func cleanUpDir(path string) error {
 
 func createTestHandler(baseDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		uploadHandler(w, r, baseDir)
+		ReceiveDir(w, r, baseDir)
 	}
 }
 
@@ -74,8 +74,8 @@ func TestSendDirAndRestore(t *testing.T) {
 	url := "http://127.0.0.1:8081/catalogueUpload"
 
 	// 发送文件夹
-	err = traverse(testRootDir, url)
+	err = Traverse(testRootDir, url)
 	if err != nil {
-		t.Fatalf("sendDir failed: %v", err)
+		t.Fatalf("SendDir failed: %v", err)
 	}
 }

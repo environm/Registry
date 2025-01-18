@@ -1,4 +1,4 @@
-package utils
+package data
 
 import (
 	"bytes"
@@ -67,7 +67,7 @@ func TestLoadFile(t *testing.T) {
 	cleanup(dest, fileName, tag)
 }
 
-func TestDeleteFile(t *testing.T) {
+func TestDeleteFile_file(t *testing.T) {
 	// 测试删除文件功能
 	dest := "./test_dir"
 	fileName := "testFile"
@@ -95,7 +95,7 @@ func TestDeleteFile(t *testing.T) {
 	}
 }
 
-func TestUpdateFile(t *testing.T) {
+func TestUpdateFile_file(t *testing.T) {
 	// 测试更新文件功能
 	dest := "./test_dir"
 	fileName := "testFile"
