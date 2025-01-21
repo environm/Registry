@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"hit.edu/framework/pkg/registry/utils"
+	"hit.edu/framework/pkg/registry/data"
 	"net/http"
 )
 
@@ -13,7 +13,7 @@ type QueryListHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *utils.FileMapping
+	FileMapping *data.FileMapping
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -22,7 +22,7 @@ func (d *QueryListHandler) GetHandler() func(w http.ResponseWriter, r *http.Requ
 	return d.Handler
 }
 
-func NewQueryListHandler(dataPath string, fileMapping *utils.FileMapping) *QueryListHandler {
+func NewQueryListHandler(dataPath string, fileMapping *data.FileMapping) *QueryListHandler {
 	dh := &QueryListHandler{
 		DataPath:    dataPath,
 		FileMapping: fileMapping,

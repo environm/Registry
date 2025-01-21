@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"hit.edu/framework/pkg/component-base/logs"
+	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"io"
 	"net/http"
@@ -18,7 +19,7 @@ type DownloadHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *utils.FileMapping
+	FileMapping *data.FileMapping
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -27,7 +28,7 @@ func (d *DownloadHandler) GetHandler() func(w http.ResponseWriter, r *http.Reque
 	return d.Handler
 }
 
-func NewDownloadHandler(dataPath string, fileMapping *utils.FileMapping) *DownloadHandler {
+func NewDownloadHandler(dataPath string, fileMapping *data.FileMapping) *DownloadHandler {
 	dh := &DownloadHandler{
 		DataPath:    dataPath,
 		FileMapping: fileMapping,

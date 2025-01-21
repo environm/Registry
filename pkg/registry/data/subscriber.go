@@ -1,4 +1,4 @@
-package utils
+package data
 
 import (
 	"fmt"
@@ -57,4 +57,13 @@ func (sm *SubscriptionManager) Unsubscribe(fileName, tag string, client string) 
 			break
 		}
 	}
+}
+
+// 判断文件是否订阅
+func (sm *SubscriptionManager) IsSubscribed(fileName, tag string) bool {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
+	key := getKey(fileName, tag)
+	_, exists := sm.subscribers[key]
+	return exists
 }

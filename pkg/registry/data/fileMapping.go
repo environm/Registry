@@ -1,4 +1,4 @@
-package utils
+package data
 
 import (
 	"archive/zip"
@@ -53,7 +53,7 @@ func (fm *FileMapping) InitializeFromDirectory(dirPath string) error {
 		fileName, tag := parts[0], parts[1]
 
 		// 创建文件对象并存储到映射中
-		fm.files[fm.getFileKey(fileName, tag)] = *NewFile(fileName, tag, true)
+		fm.files[fm.getFileKey(fileName, tag)] = *NewFile(fileName, tag, FileTypeFile, true)
 		return nil
 	})
 
@@ -118,7 +118,7 @@ func (fm *FileMapping) SaveFile(dest, fileName, tag string, isPermanent bool, da
 	}
 
 	// 创建文件对象
-	file := NewFile(fileName, tag, isPermanent)
+	file := NewFile(fileName, tag, FileTypeFile, isPermanent)
 	err := file.SaveFile(dest, data)
 	if err != nil {
 		return err
@@ -126,6 +126,23 @@ func (fm *FileMapping) SaveFile(dest, fileName, tag string, isPermanent bool, da
 
 	// 将文件信息添加到映射中
 	fm.files[key] = *file
+	return nil
+}
+
+// filemapping 添加 文件夹信息
+func (fm *FileMapping) SaveFolder(dest, fileName, tag string, isPermanent bool) error {
+	fm.mutex.Lock()
+	defer fm.mutex.Unlock()
+
+	key := fm.getFileKey(fileName, tag)
+	if _, exists := fm.files[key]; exists {
+		return fmt.Errorf("folder %s already exists", key)
+	}
+	// 创建文件夹对象
+	folder := NewFile(fileName, tag, FileTypeFolder, isPermanent)
+
+	fm.files[key] = *folder
+
 	return nil
 }
 

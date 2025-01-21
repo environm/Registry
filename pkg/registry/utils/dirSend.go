@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 )
 
-// sendFile 发送文件内容到服务器
-func sendFile(rootPath, filePath string, parentPath string, url string) error {
+// SendFile 发送文件内容到服务器
+func SendFile(rootPath, filePath string, parentPath string, url string) error {
 	// 打开文件
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -40,6 +40,7 @@ func sendFile(rootPath, filePath string, parentPath string, url string) error {
 
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("FileType", "folder")
 	req.Header.Set("File-Name", filepath.Base(filePath)) // 文件名
 	req.Header.Set("Parent-Path", parentPath)            // 父目录路径
 	req.Header.Set("rootPath", rootPath)                 // 根目录路径
@@ -56,8 +57,8 @@ func sendFile(rootPath, filePath string, parentPath string, url string) error {
 	return nil
 }
 
-// sendDir 发送目录信息到服务器
-func sendDir(rootPath, dirPath string, parentPath string, url string) error {
+// SendDir 发送目录信息到服务器
+func SendDir(rootPath, dirPath string, parentPath string, url string) error {
 	// 构建目录信息
 	dirInfo := fmt.Sprintf("DIR:%s", dirPath)
 	body := bytes.NewBuffer([]byte(dirInfo))
@@ -68,6 +69,7 @@ func sendDir(rootPath, dirPath string, parentPath string, url string) error {
 
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/text")
+	req.Header.Set("FileType", "folder")
 	req.Header.Set("Directory-Name", filepath.Base(dirPath)) // 目录名
 	req.Header.Set("Parent-Path", parentPath)                // 父目录路径
 	req.Header.Set("rootPath", rootPath)                     // 根目录路径
@@ -84,8 +86,8 @@ func sendDir(rootPath, dirPath string, parentPath string, url string) error {
 	return nil
 }
 
-// traverse 遍历目录并发送文件或目录信息
-func traverse(rootPath string, url string) error {
+// Traverse 遍历目录并发送文件或目录信息
+func Traverse(rootPath string, url string) error {
 	// 确保路径规范化
 	rootPath = filepath.Clean(rootPath)
 
@@ -102,19 +104,55 @@ func traverse(rootPath string, url string) error {
 		if info.IsDir() {
 			// 忽略根目录，因为它已经被处理过
 			if path != rootPath {
-				err := sendDir(rootPath, path, parentPath, url)
+				err := SendDir(rootPath, path, parentPath, url)
 				if err != nil {
 					return fmt.Errorf("failed to send directory: %v", err)
 				}
 			}
 		} else {
 			// 如果是文件，发送文件内容
-			err := sendFile(rootPath, path, parentPath, url)
+			err := SendFile(rootPath, path, parentPath, url)
 			if err != nil {
 				return fmt.Errorf("failed to send file: %v", err)
 			}
 		}
 		return nil
 	})
-	return err
+	// 发送终止报文
+	if err = SendCompletionSignal(rootPath, url); err != nil {
+		return fmt.Errorf("error sending completion signal: %v", err)
+	}
+
+	fmt.Printf("Traversal completed successfully for root path: %s\n", rootPath)
+	return nil
+}
+
+// SendCompletionSignal 发送终止报文以标识传输结束
+func SendCompletionSignal(rootPath, url string) error {
+	body := bytes.NewBufferString("TRANSMISSION_COMPLETE") // 自定义终止报文内容
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return fmt.Errorf("failed to create completion signal request: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/text")
+	req.Header.Set("FileType", "completion") // 自定义 FileType 表示终止报文
+	req.Header.Set("Root-Path", rootPath)    // 根路径标识
+
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send completion signal: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("completion signal failed: %s", resp.Status)
+	}
+
+	fmt.Println("Transmission completed successfully.")
+	return nil
 }

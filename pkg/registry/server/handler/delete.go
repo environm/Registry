@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
 	"path/filepath"
@@ -16,7 +17,7 @@ type DeleteHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *utils.FileMapping
+	FileMapping *data.FileMapping
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -25,7 +26,7 @@ func (d *DeleteHandler) GetHandler() func(w http.ResponseWriter, r *http.Request
 	return d.Handler
 }
 
-func NewDeleteHandler(dataPath string, fileMapping *utils.FileMapping) *DeleteHandler {
+func NewDeleteHandler(dataPath string, fileMapping *data.FileMapping) *DeleteHandler {
 	dh := &DeleteHandler{
 		DataPath:    dataPath,
 		FileMapping: fileMapping,

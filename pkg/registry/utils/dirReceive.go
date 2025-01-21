@@ -33,8 +33,8 @@ func createDir(dirPath string) error {
 //	}
 //}
 
-// uploadHandler 接收文件和目录信息，并正确创建或存储
-func uploadHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
+// ReceiveDir 接收文件和目录信息，并正确创建或存储
+func ReceiveDir(w http.ResponseWriter, r *http.Request, baseDir string) {
 	// 确保 BaseDir 不为空
 	if baseDir == "" {
 		http.Error(w, "BaseDir is not set", http.StatusInternalServerError)
@@ -52,6 +52,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
 	contentType := r.Header.Get("Content-Type")
 	rootPath := r.Header.Get("rootPath") // 根目录路径
 	parentPath := r.Header.Get("Parent-Path")
+	fileType := r.Header.Get("FileType") // 获取 FileType，用于识别终止报文
+
+	// 处理终止报文
+	if fileType == "completion" {
+		fmt.Println("Received transmission completion signal.")
+		w.Write([]byte("Transmission completed successfully"))
+		return
+	}
 
 	if rootPath == "" || parentPath == "" {
 		http.Error(w, "Root path or parent path is missing", http.StatusBadRequest)
