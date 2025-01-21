@@ -42,7 +42,7 @@ func ForwardRequest(r *http.Request, url string, w http.ResponseWriter, fileName
 	defer resp.Body.Close()
 
 	// 检查目标服务器的响应状态码
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusCreated {
 		http.Error(w, fmt.Sprintf("Target server responded with status %d", resp.StatusCode), http.StatusBadGateway)
 		logs.Infof("Target server responded with status %d for file %s_%s", resp.StatusCode, fileName, tag)
 		return fmt.Errorf("target server responded with status %d", resp.StatusCode)

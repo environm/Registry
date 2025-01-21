@@ -73,7 +73,7 @@ func (d *ReceiveHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 			for _, subscriber := range subscribers {
 				// 转发给订阅者
 				if err := utils.ForwardRequest(r, subscriber, w, fileName, tag); err != nil {
-					http.Error(w, fmt.Sprintf("转发请求失败: %v", err), http.StatusInternalServerError)
+					http.Error(w, fmt.Sprintf("Failed to forward request: %v", err), http.StatusInternalServerError)
 					return
 				}
 			}
@@ -86,13 +86,13 @@ func (d *ReceiveHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 			utils.ReceiveDir(w, r, d.DataPath)
 			err := d.FileMapping.SaveFolder(d.DataPath, fileName, tag, false)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("保存文件夹失败: %v", err), http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("Failed to save folder: %v", err), http.StatusInternalServerError)
 				return
 			}
 		case "file":
 			err := d.FileMapping.SaveFile(d.DataPath, fileName, tag, false, r.Body)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("保存文件失败: %v", err), http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("Failed to save file: %v", err), http.StatusInternalServerError)
 				return
 			}
 		default:

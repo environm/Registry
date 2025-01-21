@@ -118,5 +118,41 @@ func Traverse(rootPath string, url string) error {
 		}
 		return nil
 	})
-	return err
+	// 发送终止报文
+	if err = SendCompletionSignal(rootPath, url); err != nil {
+		return fmt.Errorf("error sending completion signal: %v", err)
+	}
+
+	fmt.Printf("Traversal completed successfully for root path: %s\n", rootPath)
+	return nil
+}
+
+// SendCompletionSignal 发送终止报文以标识传输结束
+func SendCompletionSignal(rootPath, url string) error {
+	body := bytes.NewBufferString("TRANSMISSION_COMPLETE") // 自定义终止报文内容
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return fmt.Errorf("failed to create completion signal request: %v", err)
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/text")
+	req.Header.Set("FileType", "completion") // 自定义 FileType 表示终止报文
+	req.Header.Set("Root-Path", rootPath)    // 根路径标识
+
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send completion signal: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("completion signal failed: %s", resp.Status)
+	}
+
+	fmt.Println("Transmission completed successfully.")
+	return nil
 }
