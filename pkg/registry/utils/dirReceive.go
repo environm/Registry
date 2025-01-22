@@ -22,17 +22,6 @@ func createDir(dirPath string) error {
 	return nil
 }
 
-//func buildPath(baseDir, parentPath, name string) string {
-//	switch {
-//	case rootPath == parentPath && parentPath == name:
-//		return filepath.Join(baseDir, rootPath) // 所有相等，返回一个
-//	case rootPath == parentPath:
-//		return filepath.Join(baseDir, rootPath, name) // rootPath 和 parentPath 相等，合并 rootPath 和 name
-//	default:
-//		return filepath.Join(baseDir, rootPath, parentPath, name) // 都不相等，返回完整路径
-//	}
-//}
-
 // ReceiveDir 接收文件和目录信息，并正确创建或存储
 func ReceiveDir(w http.ResponseWriter, r *http.Request, baseDir string) {
 	// 确保 BaseDir 不为空

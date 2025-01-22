@@ -43,7 +43,6 @@ func (d *UploadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 		// 获取参数
 		param := r.URL.Query()
 		// 获取文件名（从 URL 参数或者 Header 中获取）
-		//fileName := r.URL.Query().Get("filename")
 		fileName := utils.GetQueryParamCaseInsensitive(param, "filename")
 		if fileName == "" {
 			http.Error(w, "Filename is required", http.StatusBadRequest)
@@ -52,52 +51,40 @@ func (d *UploadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 		fileName = filepath.Clean(fileName)
 
 		// 获取标签（如果没有提供，则设置默认标签）
-		//tag := r.URL.Query().Get("tag")
 		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
 		if tag == "" {
 			tag = "v1.0.0" // 默认标签
 		}
 
-		// 获取是否需要永久存储的参数（默认为 false）
-		isPermanent := utils.GetQueryParamCaseInsensitive(param, "isPermanent") == "true"
-		//isPermanent := r.URL.Query().Get("isPermanent") == "true"
-
-		//isPermanent := false // 默认值
-		//if isPermanentStr != "" {
-		//	// 将字符串转换为布尔值
-		//	var err error
-		//	isPermanent, err = strconv.ParseBool(isPermanentStr)
-		//	if err != nil {
-		//		http.Error(w, "Invalid value for isPermanent (must be true or false)", http.StatusBadRequest)
-		//		return
-		//	}
-		//}
-
-		// 获取上传的文件
-		file, _, err := r.FormFile("file")
-		if err != nil {
-			http.Error(w, "无法获取文件", http.StatusBadRequest)
-			return
-		}
-		defer file.Close()
-
-		//// 创建 File 实例
-		//f := utils.NewFile(fileName, tag, isPermanent)
-		err = d.FileMapping.SaveFile(d.DataPath, fileName, tag, isPermanent, file)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("保存文件失败: %v", err), http.StatusInternalServerError)
-			return
+		fileType := r.Header.Get("FileType")
+		if fileType == "" {
+			fileType = "file"
+			//http.Error(w, "FileType header is required", http.StatusBadRequest)
 		}
 
-		// 根据 isPermanent 参数设置文件是否为永久存储
-		//f.SetPermanent(isPermanent)
+		// 获取是否需要永久存储的参数
+		//isPermanent := utils.GetQueryParamCaseInsensitive(param, "isPermanent") == "true"
 
-		// 使用服务层的 SaveFile 方法保存文件
-		//err = f.SaveFile(d.DataPath, file)
-		//if err != nil {
-		//	http.Error(w, fmt.Sprintf("保存文件失败: %v", err), http.StatusInternalServerError)
-		//	return
-		//}
+		// 通过 upload 上传的文件默认为持久化存储， receive 收到的文件默认为临时存储(区别在于 下载之后是否删除)
+
+		switch fileType {
+		case "folder", "completion":
+			utils.ReceiveDir(w, r, d.DataPath)
+			err := d.FileMapping.SaveFolder(d.DataPath, fileName, tag, true)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Failed to save folder: %v", err), http.StatusInternalServerError)
+				return
+			}
+		case "file":
+			err := d.FileMapping.SaveFile(d.DataPath, fileName, tag, true, r.Body)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Failed to save file: %v", err), http.StatusInternalServerError)
+				return
+			}
+		default:
+			http.Error(w, "Invalid file type", http.StatusBadRequest)
+			return
+		}
 
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte("File uploaded successfully"))

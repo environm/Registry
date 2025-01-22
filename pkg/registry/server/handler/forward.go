@@ -76,10 +76,5 @@ func (d *ForwardHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 			http.Error(w, fmt.Sprintf("Failed to forward request: %v", err), http.StatusInternalServerError)
 			return
 		}
-
-		//// 返回目标服务器的响应内容
-		//w.WriteHeader(http.StatusCreated)
-		////w.Write([]byte("File received successfully"))
-		//_, _ = w.Write([]byte("File received successfully"))
 	}
 }
