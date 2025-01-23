@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
@@ -49,7 +50,6 @@ func (d *QueryIsExistsHandler) NewHandlerFunc() func(w http.ResponseWriter, r *h
 
 		// 获取文件名参数
 		fileName := utils.GetQueryParamCaseInsensitive(param, "filename")
-		//fileName := r.URL.Query().Get("filename")
 		if fileName == "" {
 			http.Error(w, "Filename is required", http.StatusBadRequest)
 			return
@@ -58,24 +58,30 @@ func (d *QueryIsExistsHandler) NewHandlerFunc() func(w http.ResponseWriter, r *h
 
 		// 获取标签参数（如果未提供，使用默认值）
 		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
-		//tag := r.URL.Query().Get("tag")
 		if tag == "" {
 			tag = "v1.0.0"
 		}
 
 		// 创建 File 实例并调用 IsExists 检查文件是否存在
-		//f := utils.NewFile(fileName, tag)
-		//exists := f.IsExists(d.DataPath)
-		exists, err := d.FileMapping.QueryFile(fileName, tag)
+		file, err := d.FileMapping.QueryFile(fileName, tag)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("查询文件失败: %v", err), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Failed to check file existence: %v", err), http.StatusInternalServerError)
 			return
 		}
 
-		if exists != nil {
+		if file != nil {
 			// 文件存在，返回 200 OK
+			//w.WriteHeader(http.StatusOK)
+			//w.Write([]byte(fmt.Sprintf("File %s (tag: %s) exists", fileName, tag)))
+			// 文件存在，返回文件的 JSON 内容
+			w.Header().Set("Content-Type", "application/json")
+			jsonData, err := json.Marshal(file)
+			if err != nil {
+				http.Error(w, "Failed to marshal file data", http.StatusInternalServerError)
+				return
+			}
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(fmt.Sprintf("File %s (tag: %s) exists", fileName, tag)))
+			w.Write(jsonData)
 		} else {
 			// 文件不存在，返回 404 Not Found
 			http.Error(w, fmt.Sprintf("File %s (tag: %s) not found", fileName, tag), http.StatusNotFound)

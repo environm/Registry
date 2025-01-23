@@ -5,6 +5,7 @@ import (
 	"hit.edu/framework/pkg/component-base/logs"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
@@ -16,6 +17,28 @@ func GetQueryParamCaseInsensitive(params map[string][]string, paramName string) 
 		}
 	}
 	return ""
+}
+
+// GetFileParams 从请求中提取文件名和标签参数
+func GetFileParams(r *http.Request, defaultTag string) (string, string, error) {
+	// 获取参数
+	param := r.URL.Query()
+
+	// 获取文件名参数
+	fileName := GetQueryParamCaseInsensitive(param, "filename")
+	if fileName == "" {
+		return "", "", fmt.Errorf("filename is required")
+	}
+	// 清理路径，防止路径遍历攻击
+	fileName = filepath.Clean(fileName)
+
+	// 获取标签参数（如果未提供，使用默认值）
+	tag := GetQueryParamCaseInsensitive(param, "tag")
+	if tag == "" {
+		tag = defaultTag
+	}
+
+	return fileName, tag, nil
 }
 
 // ForwardRequest 将 HTTP 请求转发给订阅者

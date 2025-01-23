@@ -62,8 +62,8 @@ func (d *ReceiveHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 
 		fileType := r.Header.Get("FileType")
 		if fileType == "" {
-			http.Error(w, "FileType header is required", http.StatusBadRequest)
-			return
+			fileType = "file"
+			//http.Error(w, "FileType header is required", http.StatusBadRequest)
 		}
 
 		// 处理订阅
@@ -82,7 +82,7 @@ func (d *ReceiveHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 
 		// 如果没有订阅请求，则存储到文件系统中，等待请求下载
 		switch fileType {
-		case "folder":
+		case "folder", "completion":
 			utils.ReceiveDir(w, r, d.DataPath)
 			err := d.FileMapping.SaveFolder(d.DataPath, fileName, tag, false)
 			if err != nil {

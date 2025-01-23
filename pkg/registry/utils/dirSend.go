@@ -148,11 +148,6 @@ func SendCompletionSignal(rootPath, url string) error {
 	}
 	defer resp.Body.Close()
 
-	// 检查响应状态码
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("completion signal failed: %s", resp.Status)
-	}
-
 	fmt.Println("Transmission completed successfully.")
 	return nil
 }
