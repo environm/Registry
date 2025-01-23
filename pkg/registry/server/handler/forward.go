@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-// HandlePostAndForward 处理 POST 请求并实时转发数据
+// ForwardHandler 处理 POST 请求并实时转发数据
 // TODO:
 
 type ForwardHandler struct {
@@ -25,6 +25,7 @@ func (d *ForwardHandler) GetHandler() func(w http.ResponseWriter, r *http.Reques
 	return d.Handler
 }
 
+// NewForwardHandler 创建一个新的 ForwardHandler 实例
 func NewForwardHandler(dataPath string, fileMapping *data.FileMapping) *ForwardHandler {
 	dh := &ForwardHandler{
 		DataPath:    dataPath,
