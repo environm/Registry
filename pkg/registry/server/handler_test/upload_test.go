@@ -2,7 +2,7 @@ package handler
 
 import (
 	"fmt"
-	"hit.edu/framework/pkg/registry/data"
+	"hit.edu/framework/pkg/registry/else"
 	"hit.edu/framework/pkg/registry/server/handler"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
@@ -13,7 +13,7 @@ import (
 )
 
 func TestUploadFolder(t *testing.T) {
-	fileMapping := data.NewFileMapping() // 假设 NewFileMapping 方法初始化成功
+	fileMapping := _else.NewFileMapping() // 假设 NewFileMapping 方法初始化成功
 
 	rootPath, err := createTestDirWithFiles("./")
 	if err != nil {

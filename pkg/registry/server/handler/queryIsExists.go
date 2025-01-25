@@ -6,7 +6,6 @@ import (
 	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
-	"path/filepath"
 )
 
 // QueryIsExistsHandler 对应查询文件是否存在请求
@@ -18,7 +17,8 @@ type QueryIsExistsHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *data.FileMapping
+	//FileMapping *data.FileMapping
+	DataSpecList *data.DataSpecList
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -27,10 +27,10 @@ func (d *QueryIsExistsHandler) GetHandler() func(w http.ResponseWriter, r *http.
 	return d.Handler
 }
 
-func NewQueryIsExistsHandler(dataPath string, fileMapping *data.FileMapping) *QueryIsExistsHandler {
+func NewQueryIsExistsHandler(dataPath string, dataSpecList *data.DataSpecList) *QueryIsExistsHandler {
 	dh := &QueryIsExistsHandler{
-		DataPath:    dataPath,
-		FileMapping: fileMapping,
+		DataPath:     dataPath,
+		DataSpecList: dataSpecList,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -45,25 +45,11 @@ func (d *QueryIsExistsHandler) NewHandlerFunc() func(w http.ResponseWriter, r *h
 			http.Error(w, "Only GET is supported", http.StatusMethodNotAllowed)
 			return
 		}
-		// 获取参数
-		param := r.URL.Query()
 
-		// 获取文件名参数
-		fileName := utils.GetQueryParamCaseInsensitive(param, "filename")
-		if fileName == "" {
-			http.Error(w, "Filename is required", http.StatusBadRequest)
-			return
-		}
-		fileName = filepath.Clean(fileName) // 清理路径，防止路径遍历攻击
-
-		// 获取标签参数（如果未提供，使用默认值）
-		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
-		if tag == "" {
-			tag = "v1.0.0"
-		}
+		fileName, tag, _, _, err := utils.GetFileParams(r, "v1.0.0")
 
 		// 创建 File 实例并调用 IsExists 检查文件是否存在
-		file, err := d.FileMapping.QueryFile(fileName, tag)
+		file, err := d.DataSpecList.GetDataSpec(fileName, tag)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to check file existence: %v", err), http.StatusInternalServerError)
 			return

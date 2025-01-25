@@ -20,14 +20,14 @@ func GetQueryParamCaseInsensitive(params map[string][]string, paramName string) 
 }
 
 // GetFileParams 从请求中提取文件名和标签参数
-func GetFileParams(r *http.Request, defaultTag string) (string, string, error) {
+func GetFileParams(r *http.Request, defaultTag string) (string, string, string, string, error) {
 	// 获取参数
 	param := r.URL.Query()
 
 	// 获取文件名参数
 	fileName := GetQueryParamCaseInsensitive(param, "filename")
 	if fileName == "" {
-		return "", "", fmt.Errorf("filename is required")
+		return "", "", "", "", fmt.Errorf("filename is required")
 	}
 	// 清理路径，防止路径遍历攻击
 	fileName = filepath.Clean(fileName)
@@ -38,7 +38,16 @@ func GetFileParams(r *http.Request, defaultTag string) (string, string, error) {
 		tag = defaultTag
 	}
 
-	return fileName, tag, nil
+	// 获取文件所有者
+	owner := r.RemoteAddr
+
+	// 获取文件类型
+	fileType := r.Header.Get("FileType")
+	if fileType == "" {
+		fileType = "file"
+	}
+
+	return fileName, tag, owner, fileType, nil
 }
 
 // ForwardRequest 将 HTTP 请求转发给订阅者

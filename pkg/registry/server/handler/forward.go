@@ -6,7 +6,6 @@ import (
 	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
-	"path/filepath"
 )
 
 // ForwardHandler 处理 POST 请求并实时转发数据
@@ -16,7 +15,8 @@ type ForwardHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *data.FileMapping
+	//FileMapping *data.FileMapping
+	DataSpecList *data.DataSpecList
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -26,10 +26,10 @@ func (d *ForwardHandler) GetHandler() func(w http.ResponseWriter, r *http.Reques
 }
 
 // NewForwardHandler 创建一个新的 ForwardHandler 实例
-func NewForwardHandler(dataPath string, fileMapping *data.FileMapping) *ForwardHandler {
+func NewForwardHandler(dataPath string, dataSpecList *data.DataSpecList) *ForwardHandler {
 	dh := &ForwardHandler{
-		DataPath:    dataPath,
-		FileMapping: fileMapping,
+		DataPath:     dataPath,
+		DataSpecList: dataSpecList,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -43,23 +43,14 @@ func (d *ForwardHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 			http.Error(w, "Only POST is supported", http.StatusMethodNotAllowed)
 			return
 		}
-		// 获取参数
-		param := r.URL.Query()
-		// 获取文件名
-		fileName := utils.GetQueryParamCaseInsensitive(param, "filename")
-		if fileName == "" {
-			http.Error(w, "Filename is required", http.StatusBadRequest)
-			logs.Infof("Filename missing in request")
+
+		fileName, tag, _, _, err := utils.GetFileParams(r, "v1.0.0")
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error getting file parameters: %v", err), http.StatusBadRequest)
 			return
 		}
-		fileName = filepath.Clean(fileName)
-
-		// 获取标签
-		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
-		if tag == "" {
-			tag = "v1.0.0" // 设置默认标签
-		}
-
+		// 获取参数
+		param := r.URL.Query()
 		// 获取目标地址
 		targetURL := utils.GetQueryParamCaseInsensitive(param, "target")
 		if targetURL == "" {

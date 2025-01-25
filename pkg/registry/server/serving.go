@@ -17,7 +17,8 @@ type ServingInfo struct {
 	DataPath string
 
 	// file mapping
-	FileMapping *data.FileMapping
+	//FileMapping *data.FileMapping
+	DataSpecList *data.DataSpecList
 
 	// 订阅者列表
 	Subscribers *data.SubscriptionManager

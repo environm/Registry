@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"hit.edu/framework/pkg/registry/data"
+	"hit.edu/framework/pkg/registry/else"
 	"hit.edu/framework/pkg/registry/server/handler"
 	"io/ioutil"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 // 测试真实的 ForwardHandler 和 ReceiveHandler 的交互
 func TestForwardAndReceiveHandlersReal(t *testing.T) {
 	// 初始化数据
-	fileMapping := data.NewFileMapping() // 假设 NewFileMapping 方法初始化成功
+	fileMapping := _else.NewFileMapping() // 假设 NewFileMapping 方法初始化成功
 	subscribers := data.NewSubscriptionManager()
 
 	// 实例化真实的 ReceiveHandler
