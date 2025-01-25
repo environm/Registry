@@ -13,14 +13,15 @@ import (
 // 测试真实的 ForwardHandler 和 ReceiveHandler 的交互
 func TestForwardAndReceiveHandlersReal(t *testing.T) {
 	// 初始化数据
-	fileMapping := data.NewFileMapping() // 假设 NewFileMapping 方法初始化成功
+	//fileMapping := _else.NewFileMapping() // 假设 NewFileMapping 方法初始化成功
+	dataSpecList := data.NewDataSpecList()
 	subscribers := data.NewSubscriptionManager()
 
 	// 实例化真实的 ReceiveHandler
-	receiveHandler := handler.NewReceiveHandler("/tmp/data", fileMapping, subscribers)
+	receiveHandler := handler.NewReceiveHandler("/tmp/data", dataSpecList, subscribers)
 
 	// 实例化真实的 ForwardHandler
-	forwardHandler := handler.NewForwardHandler("/tmp/data", fileMapping)
+	forwardHandler := handler.NewForwardHandler("/tmp/data", dataSpecList)
 
 	// 启动 ReceiveHandler 的 HTTP 服务器
 	receiveServer := httptest.NewServer(http.HandlerFunc(receiveHandler.GetHandler()))

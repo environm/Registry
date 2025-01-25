@@ -18,7 +18,8 @@ type DownloadHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *data.FileMapping
+	//FileMapping *data.FileMapping
+	DataSpecList *data.DataSpecList
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -27,10 +28,10 @@ func (d *DownloadHandler) GetHandler() func(w http.ResponseWriter, r *http.Reque
 	return d.Handler
 }
 
-func NewDownloadHandler(dataPath string, fileMapping *data.FileMapping) *DownloadHandler {
+func NewDownloadHandler(dataPath string, dataSpecList *data.DataSpecList) *DownloadHandler {
 	dh := &DownloadHandler{
-		DataPath:    dataPath,
-		FileMapping: fileMapping,
+		DataPath:     dataPath,
+		DataSpecList: dataSpecList,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -45,15 +46,10 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		fileName, tag, err := utils.GetFileParams(r, "v1.0.0")
+		fileName, tag, _, fileType, err := utils.GetFileParams(r, "v1.0.0")
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error getting file parameters: %v", err), http.StatusBadRequest)
 			return
-		}
-
-		fileType := r.Header.Get("FileType")
-		if fileType == "" {
-			fileType = "file"
 		}
 
 		clientAddr := r.RemoteAddr
@@ -66,7 +62,8 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 				return
 			}
 		case "file":
-			file, err := d.FileMapping.LoadFile(fileName, tag, d.DataPath)
+			//file, err := d.FileMapping.LoadFile(fileName, tag, d.DataPath)
+			file, err := d.DataSpecList.LoadFile(fileName, tag)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Error loading file: %v", err), http.StatusNotFound)
 				return
@@ -89,11 +86,12 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 		}
 
 		// 检查文件是否标记为永久存储
-		isExits, _ := d.FileMapping.QueryFile(fileName, tag)
+		//isExits, _ := d.FileMapping.QueryFile(fileName, tag)
+		isExits, _ := d.DataSpecList.GetDataSpec(fileName, tag)
 		fmt.Printf("IsPermanent: %v", isExits)
-		if !isExits.GetIsPermanent() {
+		if !isExits.IsPermanent {
 			// 文件未标记为永久存储，下载后删除文件
-			err := d.FileMapping.DeleteFile(fileName, tag, d.DataPath)
+			err := d.DataSpecList.DeleteFile(fileName, tag)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Failed to delete file after download: %v", err), http.StatusInternalServerError)
 				return

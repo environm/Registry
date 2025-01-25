@@ -13,7 +13,7 @@ import (
 )
 
 func TestUploadFolder(t *testing.T) {
-	fileMapping := data.NewFileMapping() // 假设 NewFileMapping 方法初始化成功
+	dataSpecList := data.NewDataSpecList() // 假设 NewFileMapping 方法初始化成功
 
 	rootPath, err := createTestDirWithFiles("./")
 	if err != nil {
@@ -21,7 +21,7 @@ func TestUploadFolder(t *testing.T) {
 	}
 
 	// 初始化 UploadHandler
-	uploadHandler := handler.NewUploadHandler("./tmp", fileMapping)
+	uploadHandler := handler.NewUploadHandler("./tmp", dataSpecList)
 
 	// 创建 httptest 服务器
 	server := httptest.NewServer(http.HandlerFunc(uploadHandler.GetHandler()))

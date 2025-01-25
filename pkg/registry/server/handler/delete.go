@@ -5,7 +5,6 @@ import (
 	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
-	"path/filepath"
 )
 
 // DeleteHandler 对应文件删除请求
@@ -17,7 +16,8 @@ type DeleteHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *data.FileMapping
+	//FileMapping *data.FileMapping
+	DataSpecList *data.DataSpecList
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -26,10 +26,10 @@ func (d *DeleteHandler) GetHandler() func(w http.ResponseWriter, r *http.Request
 	return d.Handler
 }
 
-func NewDeleteHandler(dataPath string, fileMapping *data.FileMapping) *DeleteHandler {
+func NewDeleteHandler(dataPath string, dataSpecList *data.DataSpecList) *DeleteHandler {
 	dh := &DeleteHandler{
-		DataPath:    dataPath,
-		FileMapping: fileMapping,
+		DataPath:     dataPath,
+		DataSpecList: dataSpecList,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -45,30 +45,14 @@ func (d *DeleteHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		param := r.URL.Query()
-
-		// 获取文件名参数
-		fileName := utils.GetQueryParamCaseInsensitive(param, "filename")
-		//fileName := r.URL.Query().Get("filename")
-		if fileName == "" {
-			http.Error(w, "Filename is required", http.StatusBadRequest)
+		fileName, tag, _, _, err := utils.GetFileParams(r, "v1.0.0")
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error getting file parameters: %v", err), http.StatusBadRequest)
 			return
 		}
-		fileName = filepath.Clean(fileName) // 清理路径，防止路径遍历攻击
 
-		// 获取标签参数（如果未提供，使用默认值）
-		//tag := r.URL.Query().Get("tag")
-		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
-		if tag == "" {
-			tag = "v1.0.0"
-		}
-
-		// 创建 File 实例
-		//f := utils.NewFile(fileName, tag)
-
-		// 调用 service 层的 DeleteFile 方法删除文件
-		//err := f.DeleteFile(d.DataPath)
-		err := d.FileMapping.DeleteFile(fileName, tag, d.DataPath)
+		//err := d.FileMapping.DeleteFile(fileName, tag, d.DataPath)
+		err = d.DataSpecList.DeleteFile(fileName, tag)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to delete file: %v", err), http.StatusInternalServerError)
 			return

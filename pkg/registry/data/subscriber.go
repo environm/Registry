@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -17,9 +16,9 @@ func NewSubscriptionManager() *SubscriptionManager {
 	}
 }
 
-func getKey(fileName, tag string) string {
-	return fmt.Sprintf("%s_%s", fileName, tag)
-}
+//func getKey(fileName, tag string) string {
+//	return fmt.Sprintf("%s_%s", fileName, tag)
+//}
 
 // Subscribe 添加订阅
 func (sm *SubscriptionManager) Subscribe(fileName, tag string, client string) {

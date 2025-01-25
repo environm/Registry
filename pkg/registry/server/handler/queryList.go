@@ -13,7 +13,8 @@ type QueryListHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *data.FileMapping
+	//FileMapping *data.FileMapping
+	DataSpecList *data.DataSpecList
 	//
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
@@ -22,10 +23,10 @@ func (d *QueryListHandler) GetHandler() func(w http.ResponseWriter, r *http.Requ
 	return d.Handler
 }
 
-func NewQueryListHandler(dataPath string, fileMapping *data.FileMapping) *QueryListHandler {
+func NewQueryListHandler(dataPath string, dataSpecList *data.DataSpecList) *QueryListHandler {
 	dh := &QueryListHandler{
-		DataPath:    dataPath,
-		FileMapping: fileMapping,
+		DataPath:     dataPath,
+		DataSpecList: dataSpecList,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -39,7 +40,8 @@ func (d *QueryListHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.
 			http.Error(w, "Only GET is supported", http.StatusMethodNotAllowed)
 			return
 		}
-		lists := d.FileMapping.ListFiles()
+		//lists := d.FileMapping.ListFiles()
+		lists := d.DataSpecList.GetList()
 
 		// 将文件列表序列化为 JSON
 		response, err := json.Marshal(lists)

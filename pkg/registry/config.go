@@ -76,15 +76,17 @@ func NewServingInfo(s *server.ServingOptions) *server.ServingInfo {
 			return nil
 		}
 	}
-	fileMapping := data.NewFileMapping()
+	//fileMapping := data.NewFileMapping()
+	dataSpecList := data.NewDataSpecList()
 
 	subscribers := data.NewSubscriptionManager()
 
 	return &server.ServingInfo{
-		Listener:    s.Listener,
-		DataPath:    DataPath,
-		FileMapping: fileMapping,
-		Subscribers: subscribers,
-		Handlers:    server.NewRegistryHandler(DataPath, fileMapping, subscribers),
+		Listener: s.Listener,
+		DataPath: DataPath,
+		//FileMapping: fileMapping,
+		DataSpecList: dataSpecList,
+		Subscribers:  subscribers,
+		Handlers:     server.NewRegistryHandler(DataPath, dataSpecList, subscribers),
 	}
 }

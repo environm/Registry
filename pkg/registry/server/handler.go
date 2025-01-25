@@ -37,19 +37,19 @@ type RegistryHandler struct {
 	CatalogueDownloadHandler handler.Handler
 }
 
-func NewRegistryHandler(dataPath string, fileMapping *data.FileMapping, subscribers *data.SubscriptionManager) *RegistryHandler {
+func NewRegistryHandler(dataPath string, dataSpecList *data.DataSpecList, subscribers *data.SubscriptionManager) *RegistryHandler {
 	// TODO: Download等改成Handler, 实现ServeHTTP等函数
 	rh := &RegistryHandler{
-		UploadHandler:            handler.NewUploadHandler(dataPath, fileMapping),
-		DownloadHandler:          handler.NewDownloadHandler(dataPath, fileMapping),
-		ForwardHandler:           handler.NewForwardHandler(dataPath, fileMapping),
-		ReceiveHandler:           handler.NewReceiveHandler(dataPath, fileMapping, subscribers),
-		DeleteHandler:            handler.NewDeleteHandler(dataPath, fileMapping),
-		QueryIsExistsHandler:     handler.NewQueryIsExistsHandler(dataPath, fileMapping),
-		QueryListHandler:         handler.NewQueryListHandler(dataPath, fileMapping),
-		SubscribeHandler:         handler.NewSubscribeHandler(subscribers),
-		CatalogueUploadHandler:   handler.NewCatalogueUploadHandler(dataPath, fileMapping),
-		CatalogueDownloadHandler: handler.NewCatalogueDownloadHandler(dataPath, fileMapping),
+		UploadHandler:        handler.NewUploadHandler(dataPath, dataSpecList),
+		DownloadHandler:      handler.NewDownloadHandler(dataPath, dataSpecList),
+		ForwardHandler:       handler.NewForwardHandler(dataPath, dataSpecList),
+		ReceiveHandler:       handler.NewReceiveHandler(dataPath, dataSpecList, subscribers),
+		DeleteHandler:        handler.NewDeleteHandler(dataPath, dataSpecList),
+		QueryIsExistsHandler: handler.NewQueryIsExistsHandler(dataPath, dataSpecList),
+		QueryListHandler:     handler.NewQueryListHandler(dataPath, dataSpecList),
+		SubscribeHandler:     handler.NewSubscribeHandler(subscribers),
+		//CatalogueUploadHandler:   handler.NewCatalogueUploadHandler(dataPath, fileMapping),
+		//CatalogueDownloadHandler: handler.NewCatalogueDownloadHandler(dataPath, fileMapping),
 	}
 
 	// TODO: 临时用法,注册路由
@@ -61,7 +61,7 @@ func NewRegistryHandler(dataPath string, fileMapping *data.FileMapping, subscrib
 	http.HandleFunc("/query/exits", rh.QueryIsExistsHandler.GetHandler())
 	http.HandleFunc("/query/list", rh.QueryListHandler.GetHandler())
 	http.HandleFunc("/subscribe", rh.SubscribeHandler.GetHandler())
-	http.HandleFunc("/catalogueUpload", rh.CatalogueUploadHandler.GetHandler())
-	http.HandleFunc("/catalogueDownload", rh.CatalogueDownloadHandler.GetHandler())
+	//http.HandleFunc("/catalogueUpload", rh.CatalogueUploadHandler.GetHandler())
+	//http.HandleFunc("/catalogueDownload", rh.CatalogueDownloadHandler.GetHandler())
 	return rh
 }

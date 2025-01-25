@@ -5,7 +5,6 @@ import (
 	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
-	"path/filepath"
 )
 
 // ReceiveHandler 文件/文件夹接收
@@ -16,7 +15,8 @@ type ReceiveHandler struct {
 	//
 	DataPath string
 	//
-	FileMapping *data.FileMapping
+	//FileMapping *data.FileMapping
+	DataSpecList *data.DataSpecList
 	//
 	Subscribers *data.SubscriptionManager
 	//
@@ -27,11 +27,11 @@ func (d *ReceiveHandler) GetHandler() func(w http.ResponseWriter, r *http.Reques
 	return d.Handler
 }
 
-func NewReceiveHandler(dataPath string, fileMapping *data.FileMapping, subscribers *data.SubscriptionManager) *ReceiveHandler {
+func NewReceiveHandler(dataPath string, dataSpecList *data.DataSpecList, subscribers *data.SubscriptionManager) *ReceiveHandler {
 	dh := &ReceiveHandler{
-		DataPath:    dataPath,
-		FileMapping: fileMapping,
-		Subscribers: subscribers,
+		DataPath:     dataPath,
+		DataSpecList: dataSpecList,
+		Subscribers:  subscribers,
 	}
 	dh.Handler = dh.NewHandlerFunc()
 	return dh
@@ -46,24 +46,11 @@ func (d *ReceiveHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 			http.Error(w, "Only POST is supported", http.StatusMethodNotAllowed)
 			return
 		}
-		// 获取参数
-		param := r.URL.Query()
-		fileName := utils.GetQueryParamCaseInsensitive(param, "fileName")
-		if fileName == "" {
-			http.Error(w, "Filename is required", http.StatusBadRequest)
-			return
-		}
-		fileName = filepath.Clean(fileName)
-		// 获取标签（如果没有提供，则设置默认标签）
-		tag := utils.GetQueryParamCaseInsensitive(param, "tag")
-		if tag == "" {
-			tag = "v1.0.0" // 默认标签
-		}
 
-		fileType := r.Header.Get("FileType")
-		if fileType == "" {
-			fileType = "file"
-			//http.Error(w, "FileType header is required", http.StatusBadRequest)
+		fileName, tag, owner, fileType, err := utils.GetFileParams(r, "v1.0.0")
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error getting file parameters: %v", err), http.StatusBadRequest)
+			return
 		}
 
 		// 处理订阅
@@ -84,13 +71,15 @@ func (d *ReceiveHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 		switch fileType {
 		case "folder", "completion":
 			utils.ReceiveDir(w, r, d.DataPath)
-			err := d.FileMapping.SaveFolder(d.DataPath, fileName, tag, false)
+			//err := d.DataSpecList.SaveFolder(d.DataPath, fileName, tag, false)
+			_, err := d.DataSpecList.SaveFolder(d.DataPath, fileName, tag, owner, false)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Failed to save folder: %v", err), http.StatusInternalServerError)
 				return
 			}
 		case "file":
-			err := d.FileMapping.SaveFile(d.DataPath, fileName, tag, false, r.Body)
+			//err := d.DataSpecList.SaveFile(d.DataPath, fileName, tag, false, r.Body)
+			_, err := d.DataSpecList.SaveFile(d.DataPath, fileName, tag, owner, false, r.Body)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Failed to save file: %v", err), http.StatusInternalServerError)
 				return
