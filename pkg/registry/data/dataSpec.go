@@ -61,6 +61,10 @@ func generateFilePath(dest, fileName, tag string) string {
 	return filepath.Join(dest, fmt.Sprintf("%s_%s", fileName, tag))
 }
 
+func generateFolderPath(dest, fileName string) string {
+	return filepath.Join(dest, fmt.Sprintf("%s", fileName))
+}
+
 // getKey 获取文件 key
 func getKey(fileName, tag string) string {
 	return fmt.Sprintf("%s_%s", fileName, tag)
@@ -137,11 +141,11 @@ func (dsl *DataSpecList) SaveFolder(dest, fileName, tag, owner string, isPermane
 	dsl.mutex.Lock()
 	defer dsl.mutex.Unlock()
 	// 生成文件路径
-	filePath := generateFilePath(dest, fileName, tag)
+	filePath := generateFolderPath(dest, fileName)
 	// 检查文件是否存在
-	if fileExists(filePath) {
-		return nil, fmt.Errorf("folder already exists: %s_%s", fileName, tag)
-	}
+	//if fileExists(filePath) {
+	//	return nil, fmt.Errorf("folder already exists: %s_%s", fileName, tag)
+	//}
 	// 创建文件夹对象
 	d := DataSpec{
 		FileName:    fileName,
@@ -158,6 +162,32 @@ func (dsl *DataSpecList) SaveFolder(dest, fileName, tag, owner string, isPermane
 	key := getKey(fileName, tag)
 	dsl.DataSpecIndex[key] = d
 	return &d, nil
+}
+
+func (dsl *DataSpecList) GetFilePath(fileName, tag string) string {
+	dsl.mutex.Lock()
+	defer dsl.mutex.Unlock()
+	key := getKey(fileName, tag)
+	dataSpec, exists := dsl.DataSpecIndex[key]
+	if !exists {
+		return ""
+	}
+	return dataSpec.FilePath
+}
+
+func (dsl *DataSpecList) GetFolderPath(dest, fileName, tag string) string {
+	dsl.mutex.Lock()
+	defer dsl.mutex.Unlock()
+	key := getKey(fileName, tag)
+	dataSpec, exists := dsl.DataSpecIndex[key]
+	if !exists {
+		return ""
+	}
+	folderPath, err := filepath.Rel(dest, dataSpec.FilePath)
+	if err != nil {
+		return dataSpec.FilePath
+	}
+	return folderPath
 }
 
 // LoadFile 从指定目录加载文件，并更新 DataSpecIndex

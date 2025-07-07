@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
@@ -51,8 +52,26 @@ func (d *SubscribeHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.
 			tag = "v1.0.0"
 		}
 
-		// 订阅记录的客户端地址
-		clientAddr := r.RemoteAddr
+		// 获取客户端显式传入的 IP
+		clientIP := utils.GetQueryParamCaseInsensitive(param, "client_ip")
+		if clientIP == "" {
+			http.Error(w, "Client IP is required (please pass ?client_ip=xxx)", http.StatusBadRequest)
+			return
+		}
+
+		//// 订阅记录的客户端地址
+		////clientAddr := r.RemoteAddr
+		//// 提取 IP 地址，去掉端口
+		//host, _, err := net.SplitHostPort(r.RemoteAddr)
+		//if err != nil {
+		//	http.Error(w, "Error parsing remote address", http.StatusInternalServerError)
+		//	return
+		//}
+		//// 如果 host 是 IPv6 地址，需要加上方括号
+		//if strings.Contains(host, ":") {
+		//	host = "[" + host + "]"
+		//}
+		clientAddr := fmt.Sprintf("http://%s:8080/receive?filename=%s", clientIP, fileName)
 
 		// 调用订阅管理器记录订阅信息
 		d.Subscribers.Subscribe(fileName, tag, clientAddr)

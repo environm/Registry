@@ -6,7 +6,9 @@ import (
 	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 )
 
 // DownloadHandler 对应文件下载请求
@@ -52,11 +54,21 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		clientAddr := r.RemoteAddr
+		//clientAddr := r.RemoteAddr
+		// 提取 IP 地址，去掉端口
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			http.Error(w, "Error parsing remote address", http.StatusInternalServerError)
+			return
+		}
+		clientURL := fmt.Sprintf("http://%s:8080/receive?filename=%s", host, fileName)
 
 		switch fileType {
 		case "folder":
-			err := utils.Traverse(d.DataPath, clientAddr)
+			folderPath := d.DataSpecList.GetFilePath(fileName, tag)
+			//utils.Traverse("D:\\Programming\\GolandProjects\\Registry\\tmp\\data\\downloads", "http://localhost:8080/receive?filename=downloads")
+
+			err := utils.Traverse(folderPath, clientURL)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Error traversing directory: %v", err), http.StatusInternalServerError)
 				return
@@ -71,9 +83,10 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 			defer file.Close()
 			// 设置响应头，支持文件下载
 			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename*=UTF-8''%s", url.QueryEscape(fileName)))
+			w.WriteHeader(http.StatusOK)
 			// 将文件内容写入响应
 			_, err = io.Copy(w, file)
-			file.Close()
 			if err != nil {
 				http.Error(w, "Failed to send file", http.StatusInternalServerError)
 				return

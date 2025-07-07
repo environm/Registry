@@ -31,6 +31,13 @@ func (sm *SubscriptionManager) Subscribe(fileName, tag string, client string) {
 		sm.subscribers[key] = []string{}
 	}
 
+	// 检查是否已存在该 client，防止重复订阅
+	for _, existingClient := range sm.subscribers[key] {
+		if existingClient == client {
+			return // 直接返回，不重复添加
+		}
+	}
+
 	// 添加订阅
 	sm.subscribers[key] = append(sm.subscribers[key], client)
 }
@@ -65,4 +72,16 @@ func (sm *SubscriptionManager) IsSubscribed(fileName, tag string) bool {
 	key := getKey(fileName, tag)
 	_, exists := sm.subscribers[key]
 	return exists
+}
+
+// 获取订阅列表
+func (sm *SubscriptionManager) GetSubscriptionList() [][]string {
+	sm.mutex.Lock()
+	defer sm.mutex.Unlock()
+	var list [][]string
+	for key, subscribers := range sm.subscribers {
+		entry := append([]string{key}, subscribers...)
+		list = append(list, entry)
+	}
+	return list
 }

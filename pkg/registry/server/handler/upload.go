@@ -72,7 +72,7 @@ func (d *UploadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		w.WriteHeader(http.StatusCreated)
+		//w.WriteHeader(http.StatusCreated)
 		w.Write([]byte("File uploaded successfully"))
 	}
 }

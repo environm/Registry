@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,22 +17,22 @@ func SendFile(rootPath, filePath string, parentPath string, url string) error {
 	}
 	defer file.Close()
 
-	// 获取文件信息
-	info, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to get file info %s: %v", filePath, err)
-	}
-
-	// 读取文件内容
-	fileContent := make([]byte, info.Size())
-	_, err = file.Read(fileContent)
-	if err != nil && err != io.EOF {
-		return fmt.Errorf("failed to read file content %s: %v", filePath, err)
-	}
-
-	// 构建 HTTP 请求体
-	body := bytes.NewBuffer(fileContent)
-	req, err := http.NewRequest("POST", url, body)
+	//// 获取文件信息
+	//info, err := file.Stat()
+	//if err != nil {
+	//	return fmt.Errorf("failed to get file info %s: %v", filePath, err)
+	//}
+	//
+	//// 读取文件内容
+	//fileContent := make([]byte, info.Size())
+	//_, err = file.Read(fileContent)
+	//if err != nil && err != io.EOF {
+	//	return fmt.Errorf("failed to read file content %s: %v", filePath, err)
+	//}
+	//
+	//// 构建 HTTP 请求体
+	//body := bytes.NewBuffer(fileContent)
+	req, err := http.NewRequest("POST", url, file)
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request: %v", err)
 	}
@@ -88,44 +87,83 @@ func SendDir(rootPath, dirPath string, parentPath string, url string) error {
 
 // Traverse 遍历目录并发送文件或目录信息
 func Traverse(rootPath string, url string) error {
-	// 确保路径规范化
 	rootPath = filepath.Clean(rootPath)
 
-	// 遍历子目录和文件
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("error walking through files: %v", err)
 		}
 
-		// 获取父目录路径
-		parentPath := filepath.Dir(path)
-
-		// 如果是目录，发送目录信息
-		if info.IsDir() {
-			// 忽略根目录，因为它已经被处理过
-			if path != rootPath {
-				err := SendDir(rootPath, path, parentPath, url)
-				if err != nil {
-					return fmt.Errorf("failed to send directory: %v", err)
-				}
-			}
-		} else {
-			// 如果是文件，发送文件内容
-			err := SendFile(rootPath, path, parentPath, url)
-			if err != nil {
-				return fmt.Errorf("failed to send file: %v", err)
-			}
+		relativePath, err := filepath.Rel(rootPath, path)
+		if err != nil {
+			return fmt.Errorf("failed to calculate relative path: %v", err)
 		}
-		return nil
+
+		var parentPath string
+		if relativePath == "." {
+			// 根目录：parentPath 是空字符串
+			parentPath = ""
+		} else {
+			parentPath = filepath.Dir(relativePath)
+		}
+
+		if info.IsDir() {
+			return SendDir(rootPath, path, parentPath, url)
+		}
+		return SendFile(rootPath, path, parentPath, url)
 	})
-	// 发送终止报文
-	if err = SendCompletionSignal(rootPath, url); err != nil {
-		return fmt.Errorf("error sending completion signal: %v", err)
+
+	if err != nil {
+		return err
+	}
+
+	if err := SendCompletionSignal(rootPath, url); err != nil {
+		return err
 	}
 
 	fmt.Printf("Traversal completed successfully for root path: %s\n", rootPath)
 	return nil
 }
+
+//func Traverse(rootPath string, url string) error {
+//	// 确保路径规范化
+//	rootPath = filepath.Clean(rootPath)
+//
+//	// 遍历子目录和文件
+//	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+//		if err != nil {
+//			return fmt.Errorf("error walking through files: %v", err)
+//		}
+//
+//		// 获取父目录路径
+//		parentPath := filepath.Dir(path)
+//
+//		// 如果是目录，发送目录信息
+//		if info.IsDir() {
+//			// 忽略根目录，因为它已经被处理过
+//			if path != rootPath {
+//				err := SendDir(rootPath, path, parentPath, url)
+//				if err != nil {
+//					return fmt.Errorf("failed to send directory: %v", err)
+//				}
+//			}
+//		} else {
+//			// 如果是文件，发送文件内容
+//			err := SendFile(rootPath, path, parentPath, url)
+//			if err != nil {
+//				return fmt.Errorf("failed to send file: %v", err)
+//			}
+//		}
+//		return nil
+//	})
+//	// 发送终止报文
+//	if err = SendCompletionSignal(rootPath, url); err != nil {
+//		return fmt.Errorf("error sending completion signal: %v", err)
+//	}
+//
+//	fmt.Printf("Traversal completed successfully for root path: %s\n", rootPath)
+//	return nil
+//}
 
 // SendCompletionSignal 发送终止报文以标识传输结束
 func SendCompletionSignal(rootPath, url string) error {

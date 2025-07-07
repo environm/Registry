@@ -24,24 +24,22 @@ func createDir(dirPath string) error {
 
 // ReceiveDir 接收文件和目录信息，并正确创建或存储
 func ReceiveDir(w http.ResponseWriter, r *http.Request, baseDir string) {
-	// 确保 BaseDir 不为空
 	if baseDir == "" {
 		http.Error(w, "BaseDir is not set", http.StatusInternalServerError)
 		return
 	}
-
-	// 确保 BaseDir 路径存在
 	baseDir = filepath.Clean(baseDir)
-	err := createDir(baseDir)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to create base directory: %v", err), http.StatusInternalServerError)
-		return
+
+	// 从 URL 查询参数获取 filename（用于根目录）
+	filename := r.URL.Query().Get("filename")
+	if filename != "" {
+		// 使用 filename 参数作为顶层目录名，加入到 baseDir
+		baseDir = filepath.Join(baseDir, filename)
 	}
 
 	contentType := r.Header.Get("Content-Type")
-	rootPath := r.Header.Get("rootPath") // 根目录路径
 	parentPath := r.Header.Get("Parent-Path")
-	fileType := r.Header.Get("FileType") // 获取 FileType，用于识别终止报文
+	fileType := r.Header.Get("FileType")
 
 	// 处理终止报文
 	if fileType == "completion" {
@@ -50,49 +48,43 @@ func ReceiveDir(w http.ResponseWriter, r *http.Request, baseDir string) {
 		return
 	}
 
-	if rootPath == "" || parentPath == "" {
-		http.Error(w, "Root path or parent path is missing", http.StatusBadRequest)
+	if parentPath == "" {
+		http.Error(w, "Parent path is missing", http.StatusBadRequest)
 		return
 	}
 
-	rootPath = filepath.Clean(rootPath)
-	parentPath = filepath.Clean(parentPath)
+	// 最终的父路径（本地路径）
+	targetParent := filepath.Join(baseDir, filepath.Clean(parentPath))
+	err := os.MkdirAll(targetParent, os.ModePerm)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to create parent directory: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	if contentType == "application/text" {
-		// 处理目录
+		// 创建子目录
 		dirName := r.Header.Get("Directory-Name")
 		if dirName == "" {
 			http.Error(w, "Directory name is missing", http.StatusBadRequest)
 			return
 		}
-		// 构建目标路径
-		dirPath := filepath.Join(baseDir, parentPath, dirName)
-
-		err := createDir(dirPath)
-		if err != nil {
+		fullDirPath := filepath.Join(targetParent, dirName)
+		if err := os.MkdirAll(fullDirPath, os.ModePerm); err != nil {
 			http.Error(w, fmt.Sprintf("failed to create directory: %v", err), http.StatusInternalServerError)
 			return
 		}
+		fmt.Printf("Created directory: %s\n", fullDirPath)
 		w.Write([]byte("Directory created successfully"))
-	} else if contentType == "application/octet-stream" {
-		// 处理文件
+		return
+	}
+
+	if contentType == "application/octet-stream" {
 		fileName := r.Header.Get("File-Name")
 		if fileName == "" {
 			http.Error(w, "File name is missing", http.StatusBadRequest)
 			return
 		}
-
-		// 构建目标路径
-		filePath := filepath.Join(baseDir, parentPath, fileName)
-		parentFullPath := filepath.Dir(filePath)
-
-		err := createDir(parentFullPath) // 确保父目录存在
-		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to create parent directory: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		// 创建并写入文件
+		filePath := filepath.Join(targetParent, fileName)
 		file, err := os.Create(filePath)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("failed to create file: %v", err), http.StatusInternalServerError)
@@ -105,9 +97,10 @@ func ReceiveDir(w http.ResponseWriter, r *http.Request, baseDir string) {
 			http.Error(w, fmt.Sprintf("failed to write file: %v", err), http.StatusInternalServerError)
 			return
 		}
-
+		fmt.Printf("Saved file: %s\n", filePath)
 		w.Write([]byte("File uploaded successfully"))
-	} else {
-		http.Error(w, "Unsupported content type", http.StatusBadRequest)
+		return
 	}
+
+	http.Error(w, "Unsupported content type", http.StatusBadRequest)
 }

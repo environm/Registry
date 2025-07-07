@@ -31,6 +31,8 @@ type RegistryHandler struct {
 	QueryListHandler handler.Handler
 	// 处理文件订阅
 	SubscribeHandler handler.Handler
+	// 获取文件订阅列表
+	SubscribeListHandler handler.Handler
 	// 处理文件目录上传
 	CatalogueUploadHandler handler.Handler
 	// 处理文件目录下载
@@ -48,6 +50,7 @@ func NewRegistryHandler(dataPath string, dataSpecList *data.DataSpecList, subscr
 		QueryIsExistsHandler: handler.NewQueryIsExistsHandler(dataPath, dataSpecList),
 		QueryListHandler:     handler.NewQueryListHandler(dataPath, dataSpecList),
 		SubscribeHandler:     handler.NewSubscribeHandler(subscribers),
+		SubscribeListHandler: handler.NewScribeListHandler(subscribers),
 		//CatalogueUploadHandler:   handler.NewCatalogueUploadHandler(dataPath, fileMapping),
 		//CatalogueDownloadHandler: handler.NewCatalogueDownloadHandler(dataPath, fileMapping),
 	}
@@ -61,6 +64,7 @@ func NewRegistryHandler(dataPath string, dataSpecList *data.DataSpecList, subscr
 	http.HandleFunc("/query/exits", rh.QueryIsExistsHandler.GetHandler())
 	http.HandleFunc("/query/list", rh.QueryListHandler.GetHandler())
 	http.HandleFunc("/subscribe", rh.SubscribeHandler.GetHandler())
+	http.HandleFunc("/subscribe/list", rh.SubscribeListHandler.GetHandler())
 	//http.HandleFunc("/catalogueUpload", rh.CatalogueUploadHandler.GetHandler())
 	//http.HandleFunc("/catalogueDownload", rh.CatalogueDownloadHandler.GetHandler())
 	return rh

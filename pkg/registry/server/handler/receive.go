@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"hit.edu/framework/pkg/component-base/logs"
 	"hit.edu/framework/pkg/registry/data"
 	"hit.edu/framework/pkg/registry/utils"
 	"net/http"
@@ -27,6 +28,7 @@ func (d *ReceiveHandler) GetHandler() func(w http.ResponseWriter, r *http.Reques
 	return d.Handler
 }
 
+// NewReceiveHandler 创建一个 ReceiveHandler 实例
 func NewReceiveHandler(dataPath string, dataSpecList *data.DataSpecList, subscribers *data.SubscriptionManager) *ReceiveHandler {
 	dh := &ReceiveHandler{
 		DataPath:     dataPath,
@@ -41,55 +43,67 @@ var _ Handler = &ReceiveHandler{}
 
 func (d *ReceiveHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 四种情况：文件夹订阅、文件订阅、文件夹上传、文件上传
-		if r.Method != http.MethodPost {
-			http.Error(w, "Only POST is supported", http.StatusMethodNotAllowed)
-			return
-		}
+		// 判断流量类型
+		flowType := r.Header.Get("FlowType")
+		// etcd 的流量
+		if flowType == "etcd" {
+			targetURL, err := utils.TransformTargetURL(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			logs.Infof("Forwarding to URL: %s", targetURL)
+			// 转发
+			if err := utils.ForwardRequest(r, targetURL, w); err != nil {
+				http.Error(w, fmt.Sprintf("Failed to forward request: %v", err), http.StatusInternalServerError)
+				return
+			}
+		} else {
+			// 四种情况：文件夹订阅、文件订阅、文件夹上传、文件上传
+			fileName, tag, owner, fileType, err := utils.GetFileParams(r, "v1.0.0")
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Error getting file parameters: %v", err), http.StatusBadRequest)
+				return
+			}
 
-		fileName, tag, owner, fileType, err := utils.GetFileParams(r, "v1.0.0")
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error getting file parameters: %v", err), http.StatusBadRequest)
-			return
-		}
+			// 处理订阅
+			if d.Subscribers.IsSubscribed(fileName, tag) {
+				// 获取订阅者
+				subscribers := d.Subscribers.GetSubscribers(fileName, tag)
+				for _, subscriber := range subscribers {
+					// 转发给订阅者
+					if err := utils.ForwardRequest(r, subscriber, w); err != nil {
+						http.Error(w, fmt.Sprintf("Failed to forward request: %v", err), http.StatusInternalServerError)
+						return
+					}
+				}
+				return
+			}
 
-		// 处理订阅
-		if d.Subscribers.IsSubscribed(fileName, tag) {
-			// 获取订阅者
-			subscribers := d.Subscribers.GetSubscribers(fileName, tag)
-			for _, subscriber := range subscribers {
-				// 转发给订阅者
-				if err := utils.ForwardRequest(r, subscriber, w, fileName, tag); err != nil {
-					http.Error(w, fmt.Sprintf("Failed to forward request: %v", err), http.StatusInternalServerError)
+			// 如果没有订阅请求，则存储到文件系统中，等待请求下载
+			switch fileType {
+			case "folder", "completion":
+				utils.ReceiveDir(w, r, d.DataPath)
+				//err := d.DataSpecList.SaveFolder(d.DataPath, fileName, tag, false)
+				_, err := d.DataSpecList.SaveFolder(d.DataPath, fileName, tag, owner, false)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("Failed to save folder: %v", err), http.StatusInternalServerError)
 					return
 				}
-			}
-			return
-		}
-
-		// 如果没有订阅请求，则存储到文件系统中，等待请求下载
-		switch fileType {
-		case "folder", "completion":
-			utils.ReceiveDir(w, r, d.DataPath)
-			//err := d.DataSpecList.SaveFolder(d.DataPath, fileName, tag, false)
-			_, err := d.DataSpecList.SaveFolder(d.DataPath, fileName, tag, owner, false)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Failed to save folder: %v", err), http.StatusInternalServerError)
+			case "file":
+				//err := d.DataSpecList.SaveFile(d.DataPath, fileName, tag, false, r.Body)
+				_, err := d.DataSpecList.SaveFile(d.DataPath, fileName, tag, owner, false, r.Body)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("Failed to save file: %v", err), http.StatusInternalServerError)
+					return
+				}
+			default:
+				http.Error(w, "Invalid file type", http.StatusBadRequest)
 				return
 			}
-		case "file":
-			//err := d.DataSpecList.SaveFile(d.DataPath, fileName, tag, false, r.Body)
-			_, err := d.DataSpecList.SaveFile(d.DataPath, fileName, tag, owner, false, r.Body)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Failed to save file: %v", err), http.StatusInternalServerError)
-				return
-			}
-		default:
-			http.Error(w, "Invalid file type", http.StatusBadRequest)
-			return
-		}
 
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("File received successfully"))
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte("File received successfully"))
+		}
 	}
 }

@@ -39,32 +39,25 @@ var _ Handler = &ForwardHandler{}
 
 func (d *ForwardHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Only POST is supported", http.StatusMethodNotAllowed)
+		// 获取集群 ID
+		ClusterID := r.Header.Get("ClusterID")
+		if ClusterID == "" {
+			http.Error(w, "Missing ClusterID in request header", http.StatusBadRequest)
+			logs.Infof("Missing ClusterID in request header")
 			return
 		}
 
-		fileName, tag, _, _, err := utils.GetFileParams(r, "v1.0.0")
+		// 生成新的 URL
+		newURL, err := utils.TransformURL(ClusterID, r)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error getting file parameters: %v", err), http.StatusBadRequest)
-			return
-		}
-		// 获取参数
-		param := r.URL.Query()
-		// 获取目标地址
-		targetURL := utils.GetQueryParamCaseInsensitive(param, "target")
-		if targetURL == "" {
-			http.Error(w, "Target URL is required for forwarding", http.StatusBadRequest)
-			logs.Infof("Target URL missing in request")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// 在目标 URL 中添加 filename 和 tag 参数
-		targetURL = fmt.Sprintf("%s/receive?filename=%s&tag=%s", targetURL, fileName, tag)
-		logs.Infof("Forwarding to URL: %s", targetURL)
+		logs.Infof("Forwarding to URL: %s", newURL)
 
 		// 转发
-		if err := utils.ForwardRequest(r, targetURL, w, fileName, tag); err != nil {
+		if err := utils.ForwardRequest(r, newURL, w); err != nil {
 			http.Error(w, fmt.Sprintf("Failed to forward request: %v", err), http.StatusInternalServerError)
 			return
 		}
