@@ -99,7 +99,13 @@ func ForwardRequest(r *http.Request, newURL string, w http.ResponseWriter) error
 }
 
 // TransformURL 将请求的 URL 转换为接收数据的 URL
-func TransformURL(ClusterID string, r *http.Request) (string, error) {
+func TransformURL(r *http.Request) (string, error) {
+	// 从请求头获取 clusterID (即发送节点的虚拟IP)
+	clusterID := r.Header.Get("clusterID")
+	if clusterID == "" {
+		return "", fmt.Errorf("missing clusterID header")
+	}
+
 	// 解析原始 URL
 	parsedURL, err := url.Parse(r.URL.String())
 	if err != nil {
@@ -107,38 +113,66 @@ func TransformURL(ClusterID string, r *http.Request) (string, error) {
 		return "", fmt.Errorf("failed to parse request URL")
 	}
 
-	// 解析 Host 替换 ClusterID
-	originalHost, port, err := net.SplitHostPort(r.Host)
+	// 获取端口（默认为8081）
+	_, port, err := net.SplitHostPort(r.Host)
 	if err != nil {
-		originalHost = r.Host
-		port = ""
-	}
-	hostParts := strings.SplitN(originalHost, ".", 2)
-	if len(hostParts) < 2 {
-		logs.Infof("Invalid host format: %s", originalHost)
-		return "", fmt.Errorf("invalid host format")
+		port = "8081" // 默认端口
 	}
 
-	// 替换 cluster ID
-	hostParts[0] = ClusterID
-	newHost := strings.Join(hostParts, ".")
-	if port != "" {
-		newHost = net.JoinHostPort(newHost, port)
-	}
-
-	// 替换路径 `/forward` 为 `/receive`
+	// 替换路径中的 /forward 为 /receive
 	parsedURL.Path = strings.Replace(parsedURL.Path, "/forward", "/receive", 1)
 
 	// 构造新的完整 URL
 	newURL := url.URL{
 		Scheme:   "http",
-		Host:     newHost,
+		Host:     net.JoinHostPort(clusterID, port), // 使用 clusterID 作为主机
 		Path:     parsedURL.Path,
 		RawQuery: parsedURL.Query().Encode(),
 	}
 
 	return newURL.String(), nil
 }
+
+//func TransformURL(ClusterID string, r *http.Request) (string, error) {
+//	// 解析原始 URL
+//	parsedURL, err := url.Parse(r.URL.String())
+//	if err != nil {
+//		logs.Infof("Failed to parse request URL: %v", err)
+//		return "", fmt.Errorf("failed to parse request URL")
+//	}
+//
+//	// 解析 Host 替换 ClusterID
+//	originalHost, port, err := net.SplitHostPort(r.Host)
+//	if err != nil {
+//		originalHost = r.Host
+//		port = ""
+//	}
+//	hostParts := strings.SplitN(originalHost, ".", 2)
+//	if len(hostParts) < 2 {
+//		logs.Infof("Invalid host format: %s", originalHost)
+//		return "", fmt.Errorf("invalid host format")
+//	}
+//
+//	// 替换 cluster ID
+//	hostParts[0] = ClusterID
+//	newHost := strings.Join(hostParts, ".")
+//	if port != "" {
+//		newHost = net.JoinHostPort(newHost, port)
+//	}
+//
+//	// 替换路径 `/forward` 为 `/receive`
+//	parsedURL.Path = strings.Replace(parsedURL.Path, "/forward", "/receive", 1)
+//
+//	// 构造新的完整 URL
+//	newURL := url.URL{
+//		Scheme:   "http",
+//		Host:     newHost,
+//		Path:     parsedURL.Path,
+//		RawQuery: parsedURL.Query().Encode(),
+//	}
+//
+//	return newURL.String(), nil
+//}
 
 // TransformTargetURL 将请求中的 target 参数解析并转换为目标 URL
 func TransformTargetURL(r *http.Request) (string, error) {

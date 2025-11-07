@@ -37,6 +37,8 @@ type RegistryHandler struct {
 	CatalogueUploadHandler handler.Handler
 	// 处理文件目录下载
 	CatalogueDownloadHandler handler.Handler
+	//
+	GetFileHandler handler.Handler
 }
 
 func NewRegistryHandler(dataPath string, dataSpecList *data.DataSpecList, subscribers *data.SubscriptionManager) *RegistryHandler {
@@ -51,21 +53,38 @@ func NewRegistryHandler(dataPath string, dataSpecList *data.DataSpecList, subscr
 		QueryListHandler:     handler.NewQueryListHandler(dataPath, dataSpecList),
 		SubscribeHandler:     handler.NewSubscribeHandler(subscribers),
 		SubscribeListHandler: handler.NewScribeListHandler(subscribers),
-		//CatalogueUploadHandler:   handler.NewCatalogueUploadHandler(dataPath, fileMapping),
-		//CatalogueDownloadHandler: handler.NewCatalogueDownloadHandler(dataPath, fileMapping),
+		GetFileHandler:       handler.NewGetFileHandler(dataPath),
 	}
 
-	// TODO: 临时用法,注册路由
-	http.HandleFunc("/download", rh.DownloadHandler.GetHandler())
-	http.HandleFunc("/upload", rh.UploadHandler.GetHandler())
-	http.HandleFunc("/forward", rh.ForwardHandler.GetHandler())
-	http.HandleFunc("/receive", rh.ReceiveHandler.GetHandler())
-	http.HandleFunc("/delete", rh.DeleteHandler.GetHandler())
-	http.HandleFunc("/query/exits", rh.QueryIsExistsHandler.GetHandler())
-	http.HandleFunc("/query/list", rh.QueryListHandler.GetHandler())
-	http.HandleFunc("/subscribe", rh.SubscribeHandler.GetHandler())
-	http.HandleFunc("/subscribe/list", rh.SubscribeListHandler.GetHandler())
-	//http.HandleFunc("/catalogueUpload", rh.CatalogueUploadHandler.GetHandler())
-	//http.HandleFunc("/catalogueDownload", rh.CatalogueDownloadHandler.GetHandler())
+	// TODO: 注册路由
+	http.HandleFunc("/download", CORSMiddleware(rh.DownloadHandler.GetHandler()))
+	http.HandleFunc("/upload", CORSMiddleware(rh.UploadHandler.GetHandler()))
+	http.HandleFunc("/forward", CORSMiddleware(rh.ForwardHandler.GetHandler()))
+	http.HandleFunc("/receive", CORSMiddleware(rh.ReceiveHandler.GetHandler()))
+	http.HandleFunc("/delete", CORSMiddleware(rh.DeleteHandler.GetHandler()))
+	http.HandleFunc("/query/exits", CORSMiddleware(rh.QueryIsExistsHandler.GetHandler()))
+	http.HandleFunc("/query/list", CORSMiddleware(rh.QueryListHandler.GetHandler()))
+	http.HandleFunc("/subscribe", CORSMiddleware(rh.SubscribeHandler.GetHandler()))
+	http.HandleFunc("/subscribe/list", CORSMiddleware(rh.SubscribeListHandler.GetHandler()))
 	return rh
+}
+
+// CORSMiddleware 包装 handler 添加 CORS 支持
+func CORSMiddleware(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 设置 CORS 头
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Expose-Headers", "Content-Length")
+		w.Header().Set("Access-Control-Allow-Credentials", "false")
+
+		// 处理 OPTIONS 预检请求
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		// 继续处理请求
+		h.ServeHTTP(w, r)
+	}
 }

@@ -48,7 +48,8 @@ func (d *ForwardHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Re
 		}
 
 		// 生成新的 URL
-		newURL, err := utils.TransformURL(ClusterID, r)
+		//newURL, err := utils.TransformURL(ClusterID, r)
+		newURL, err := utils.TransformURL(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

@@ -11,6 +11,7 @@ import (
 
 const (
 	DataPath = "./tmp/data"
+	//DataPath = "/home/public/registry"
 )
 
 // Config为对外暴露的配置，可以简化

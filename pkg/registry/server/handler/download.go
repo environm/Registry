@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 )
 
 // DownloadHandler 对应文件下载请求
@@ -82,8 +81,9 @@ func (d *DownloadHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.R
 			}
 			defer file.Close()
 			// 设置响应头，支持文件下载
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename*=UTF-8''%s", url.QueryEscape(fileName)))
+			//w.Header().Set("Content-Type", "text/plain")
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			//w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename*=UTF-8''%s", url.QueryEscape(fileName)))
 			w.WriteHeader(http.StatusOK)
 			// 将文件内容写入响应
 			_, err = io.Copy(w, file)
