@@ -39,9 +39,14 @@ type RegistryHandler struct {
 	CatalogueDownloadHandler handler.Handler
 	//
 	GetFileHandler handler.Handler
+	// 处理长连接ip保持
+	WebSocketHandler   *handler.WebSocketHandler
+	EdgeConnectHandler *handler.EdgeConnectHandler
+	EdgeNodesHandler   *handler.EdgeNodesHandler
 }
 
 func NewRegistryHandler(dataPath string, dataSpecList *data.DataSpecList, subscribers *data.SubscriptionManager) *RegistryHandler {
+	webSocketHandler := handler.NewWebSocketHandler()
 	// TODO: Download等改成Handler, 实现ServeHTTP等函数
 	rh := &RegistryHandler{
 		UploadHandler:        handler.NewUploadHandler(dataPath, dataSpecList),
@@ -54,6 +59,10 @@ func NewRegistryHandler(dataPath string, dataSpecList *data.DataSpecList, subscr
 		SubscribeHandler:     handler.NewSubscribeHandler(subscribers),
 		SubscribeListHandler: handler.NewScribeListHandler(subscribers),
 		GetFileHandler:       handler.NewGetFileHandler(dataPath),
+		WebSocketHandler:     webSocketHandler,
+		EdgeConnectHandler:   handler.NewEdgeConnectHandler(),
+		// 创建边节点信息处理器
+		EdgeNodesHandler: handler.NewEdgeNodesHandler(webSocketHandler),
 	}
 
 	// TODO: 注册路由
@@ -66,6 +75,10 @@ func NewRegistryHandler(dataPath string, dataSpecList *data.DataSpecList, subscr
 	http.HandleFunc("/query/list", CORSMiddleware(rh.QueryListHandler.GetHandler()))
 	http.HandleFunc("/subscribe", CORSMiddleware(rh.SubscribeHandler.GetHandler()))
 	http.HandleFunc("/subscribe/list", CORSMiddleware(rh.SubscribeListHandler.GetHandler()))
+	http.HandleFunc("/websocket", CORSMiddleware(rh.WebSocketHandler.GetHandler()))
+	http.HandleFunc("/edge/connect", CORSMiddleware(rh.EdgeConnectHandler.GetHandler()))
+	http.HandleFunc("/edge/nodes", CORSMiddleware(rh.EdgeNodesHandler.GetHandler()))
+	http.HandleFunc("/edge/connections", CORSMiddleware(rh.EdgeNodesHandler.GetHandler()))
 	return rh
 }
 
