@@ -1,279 +1,384 @@
-// pkg/registry/server/handler/edge_connect_handler.go
 package handler
 
 import (
-	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
-	"net"
 	"net/http"
+	"os"
+	"runtime"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
-type EdgeConnectRequest struct {
-	CloudIP   string `json:"cloud_ip"`
-	CloudPort string `json:"cloud_port"`
-	NodeName  string `json:"node_name"`
+type WSClient struct {
+	conn      *websocket.Conn
+	clientID  string
+	serverURL string
 }
 
-type EdgeConnectResponse struct {
-	Status    string `json:"status"`
-	Message   string `json:"message"`
-	LocalIP   string `json:"local_ip"`
-	RemoteIP  string `json:"remote_ip"`
-	Connected bool   `json:"connected"`
+// ConnectHandler 对应 WebSocket 客户端连接请求
+// 方法 GET
+// URL /edge/connect
+type ConnectHandler struct {
+	ServerURL string
+	Handler   func(w http.ResponseWriter, r *http.Request)
 }
 
-type EdgeConnectHandler struct {
-	activeConnections map[string]*EdgeClient
-	mutex             sync.RWMutex
+func (d *ConnectHandler) GetHandler() func(w http.ResponseWriter, r *http.Request) {
+	return d.Handler
 }
 
-func NewEdgeConnectHandler() *EdgeConnectHandler {
-	return &EdgeConnectHandler{
-		activeConnections: make(map[string]*EdgeClient),
+func NewConnectHandler(serverURL string) *ConnectHandler {
+	serverURL = "ws://223.166.61.57:11006/websocket"
+	dh := &ConnectHandler{
+		ServerURL: serverURL,
 	}
+	dh.Handler = dh.NewHandlerFunc()
+	return dh
 }
 
-func (ech *EdgeConnectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+var _ Handler = &ConnectHandler{}
 
-	var req EdgeConnectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	// 验证参数
-	if req.CloudIP == "" || req.CloudPort == "" || req.NodeName == "" {
-		http.Error(w, "cloud_ip, cloud_port and node_name are required", http.StatusBadRequest)
-		return
-	}
-
-	ech.handleEdgeConnect(w, req)
-}
-
-func (ech *EdgeConnectHandler) GetHandler() http.HandlerFunc {
-	return ech.ServeHTTP
-}
-
-func getLocalIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		return "unknown"
-	}
-	defer conn.Close()
-	return strings.Split(conn.LocalAddr().String(), ":")[0]
-}
-func (ech *EdgeConnectHandler) handleEdgeConnect(w http.ResponseWriter, req EdgeConnectRequest) {
-	cloudAddr := fmt.Sprintf("%s:%s", req.CloudIP, req.CloudPort)
-
-	// 创建新的EdgeClient
-	client := NewEdgeClient(cloudAddr, req.NodeName)
-
-	// 尝试连接
-	err := client.Connect()
-	if err != nil {
-		response := EdgeConnectResponse{
-			Status:    "error",
-			Message:   fmt.Sprintf("Connection failed: %v", err),
-			LocalIP:   getLocalIP(),
-			Connected: false,
+func (d *ConnectHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Only GET is supported", http.StatusMethodNotAllowed)
+			return
 		}
+
+		clientID := getClientID()
+
+		log.Printf("开始WebSocket连接到: %s", d.ServerURL)
+		log.Printf("客户端ID: %s", clientID)
+
+		// 创建WebSocket客户端
+		wsClient := &WSClient{
+			clientID:  clientID,
+			serverURL: d.ServerURL,
+		}
+
+		// 在goroutine中启动连接（避免阻塞HTTP请求）
+		go wsClient.connectAndServe()
+
+		// 返回连接启动响应
+		response := map[string]interface{}{
+			"status":     "connecting",
+			"client_id":  clientID,
+			"server_url": d.ServerURL,
+			"timestamp":  time.Now().Format(time.RFC3339),
+		}
+
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode(response)
-		return
-	}
-
-	// 存储连接
-	ech.mutex.Lock()
-	ech.activeConnections[req.NodeName] = client
-	ech.mutex.Unlock()
-
-	// 启动客户端协程
-	go client.Start()
-
-	// 返回成功响应
-	response := EdgeConnectResponse{
-		Status:    "success",
-		Message:   "Edge connection established successfully",
-		LocalIP:   getLocalIP(),
-		RemoteIP:  client.Conn.RemoteAddr().String(),
-		Connected: true,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-
-	log.Printf("Edge connection established to %s as %s", cloudAddr, req.NodeName)
-}
-
-type EdgeClient struct {
-	Conn        net.Conn
-	CloudAddr   string
-	NodeID      string
-	Reconnect   bool
-	MessageChan chan string
-	StopChan    chan bool
-}
-
-func NewEdgeClient(cloudAddr, nodeID string) *EdgeClient {
-	return &EdgeClient{
-		CloudAddr:   cloudAddr,
-		NodeID:      nodeID,
-		Reconnect:   true,
-		MessageChan: make(chan string, 100),
-		StopChan:    make(chan bool),
 	}
 }
 
-func (ec *EdgeClient) Connect() error {
-	conn, err := net.Dial("tcp", ec.CloudAddr)
-	if err != nil {
-		return err
-	}
-
-	ec.Conn = conn
-
-	// 发送 HTTP 升级请求
-	upgradeRequest := fmt.Sprintf("GET /websocket HTTP/1.1\r\nHost: %s\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nNode-ID: %s\r\n\r\n",
-		ec.CloudAddr, ec.NodeID)
-
-	_, err = conn.Write([]byte(upgradeRequest))
-	if err != nil {
-		conn.Close()
-		return err
-	}
-
-	log.Printf("Sent WebSocket upgrade request to %s", ec.CloudAddr)
-	return nil
+// HealthHandler 对应本地健康检查请求
+// 方法 GET
+// URL /health
+type HealthHandler struct {
+	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
-func (ec *EdgeClient) Start() {
-	defer ec.Conn.Close()
+func (d *HealthHandler) GetHandler() func(w http.ResponseWriter, r *http.Request) {
+	return d.Handler
+}
 
-	reader := bufio.NewReader(ec.Conn)
+func NewHealthHandler() *HealthHandler {
+	dh := &HealthHandler{}
+	dh.Handler = dh.NewHandlerFunc()
+	return dh
+}
 
-	// 读取欢迎消息
-	welcome, err := reader.ReadString('\n')
-	if err != nil {
-		log.Printf("Failed to read welcome message: %v", err)
-		return
-	}
-	log.Printf("Cloud server: %s", strings.TrimSpace(welcome))
+var _ Handler = &HealthHandler{}
 
-	// 启动消息发送协程
-	go ec.handleSend()
-
-	// 主循环处理接收消息
-	for {
-		select {
-		case <-ec.StopChan:
-			log.Println("Stopping edge client")
+func (d *HealthHandler) NewHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Only GET is supported", http.StatusMethodNotAllowed)
 			return
-
-		default:
-			// 设置读取超时
-			ec.Conn.SetReadDeadline(time.Now().Add(35 * time.Second))
-
-			message, err := reader.ReadString('\n')
-			if err != nil {
-				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-					continue // 超时继续
-				}
-				log.Printf("Connection lost: %v", err)
-				ec.reconnect()
-				return
-			}
-
-			message = strings.TrimSpace(message)
-			ec.handleMessage(message)
 		}
+
+		w.Header().Set("Content-Type", "application/json")
+		response := map[string]interface{}{
+			"status":    "OK",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"service":   "edge-client",
+			"version":   "1.0",
+			"metrics": map[string]interface{}{
+				"uptime":     time.Since(startTime).Seconds(),
+				"goroutines": runtime.NumGoroutine(),
+			},
+		}
+		json.NewEncoder(w).Encode(response)
 	}
 }
 
-func (ec *EdgeClient) handleMessage(message string) {
-	switch message {
-	case "HEARTBEAT":
-		// 响应心跳
-		ec.Conn.Write([]byte("PONG\n"))
-		log.Printf("Heartbeat responded")
-
-	default:
-		if strings.HasPrefix(message, "ACK:") {
-			log.Printf("Cloud acknowledged: %s", message[4:])
-		} else {
-			log.Printf("Received from cloud: %s", message)
-		}
-	}
-}
-
-func (ec *EdgeClient) handleSend() {
-	ticker := time.NewTicker(60 * time.Second)
-	defer ticker.Stop()
-
-	counter := 0
+// 以下为原有的 WSClient 方法，保持不变
+func (w *WSClient) connectAndServe() {
 	for {
-		select {
-		case <-ec.StopChan:
-			return
+		headers := http.Header{}
+		headers.Set("X-Client-ID", w.clientID)
 
-		case msg := <-ec.MessageChan:
-			// 发送用户输入的消息
-			_, err := ec.Conn.Write([]byte(msg + "\n"))
-			if err != nil {
-				log.Printf("Failed to send message: %v", err)
-			}
-
-		case <-ticker.C:
-			// 定时发送示例数据
-			counter++
-			data := fmt.Sprintf("Edge data #%d at %s", counter, time.Now().Format("15:04:05"))
-			_, err := ec.Conn.Write([]byte(data + "\n"))
-			if err != nil {
-				log.Printf("Failed to send data: %v", err)
-			} else {
-				log.Printf("Sent: %s", data)
-			}
-		}
-	}
-}
-
-func (ec *EdgeClient) SendMessage(message string) {
-	ec.MessageChan <- message
-}
-
-func (ec *EdgeClient) Stop() {
-	ec.Reconnect = false
-	close(ec.StopChan)
-	if ec.Conn != nil {
-		ec.Conn.Close()
-	}
-}
-
-func (ec *EdgeClient) reconnect() {
-	if !ec.Reconnect {
-		return
-	}
-
-	log.Println("Attempting to reconnect...")
-
-	for {
-		time.Sleep(5 * time.Second)
-		err := ec.Connect()
+		conn, _, err := websocket.DefaultDialer.Dial(w.serverURL, headers)
 		if err != nil {
-			log.Printf("Reconnect failed: %v, retrying...", err)
+			log.Printf("WebSocket连接失败: %v, 5秒后重试...", err)
+			time.Sleep(5 * time.Second)
 			continue
 		}
 
-		log.Println("Reconnected successfully")
-		go ec.Start()
-		break
+		w.conn = conn
+		log.Printf("WebSocket连接成功")
+
+		// 启动心跳
+		go w.startHeartbeat()
+
+		// 处理服务器消息
+		w.handleMessages()
+
+		// 连接断开后重试
+		log.Printf("WebSocket连接断开，重新连接...")
+		time.Sleep(3 * time.Second)
 	}
 }
+
+func (w *WSClient) startHeartbeat() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if w.conn == nil {
+			return
+		}
+
+		msg := map[string]interface{}{
+			"type": "heartbeat",
+			"payload": map[string]string{
+				"client_id": w.clientID,
+				"status":    "alive",
+			},
+			"timestamp": time.Now().Format(time.RFC3339),
+		}
+
+		if err := w.conn.WriteJSON(msg); err != nil {
+			log.Printf("发送心跳失败: %v", err)
+			return
+		}
+	}
+}
+
+// 在边侧设备的 handleMessages 函数中添加
+func (w *WSClient) handleMessages() {
+	for {
+		var msg map[string]interface{}
+		err := w.conn.ReadJSON(&msg)
+		if err != nil {
+			log.Printf("读取WebSocket消息失败: %v", err)
+			return
+		}
+
+		msgType, _ := msg["type"].(string)
+
+		switch msgType {
+		case "health_request":
+			log.Printf("收到健康检查请求")
+			w.sendHealthResponse()
+
+		case "edge_request":
+			log.Printf("收到边侧请求")
+			w.handleEdgeRequest(msg)
+
+		default:
+			log.Printf("收到服务器消息: %s", msgType)
+		}
+	}
+}
+
+// handleEdgeRequest 处理来自云侧的边侧请求
+// 在边侧设备中
+func (w *WSClient) handleEdgeRequest(msg map[string]interface{}) {
+	payload, ok := msg["payload"].(map[string]interface{})
+	if !ok {
+		log.Printf("边侧请求格式错误")
+		return
+	}
+
+	requestID, _ := payload["request_id"].(string)
+	method, _ := payload["method"].(string)
+	path, _ := payload["path"].(string)
+	queryParams, _ := payload["query_params"].(map[string]interface{})
+
+	log.Printf("处理边侧请求: %s %s", method, path)
+
+	// 构建请求URL
+	url := fmt.Sprintf("http://localhost:8919%s", path)
+	println(url)
+	// 添加查询参数
+	if len(queryParams) > 0 {
+		url += "?"
+		for key, value := range queryParams {
+			if values, ok := value.([]interface{}); ok && len(values) > 0 {
+				if strValue, ok := values[0].(string); ok {
+					url += fmt.Sprintf("%s=%s&", key, strValue)
+				}
+			}
+		}
+		url = strings.TrimSuffix(url, "&")
+	}
+
+	// 创建HTTP请求
+	var req *http.Request
+	var err error
+
+	if method == http.MethodPost || method == http.MethodPut {
+		// 处理有请求体的方法
+		if body, exists := payload["body"]; exists && body != nil {
+			jsonBody, _ := json.Marshal(body)
+			req, err = http.NewRequest(method, url, bytes.NewReader(jsonBody))
+			if err == nil {
+				req.Header.Set("Content-Type", "application/json")
+			}
+		} else {
+			req, err = http.NewRequest(method, url, nil)
+		}
+	} else {
+		// GET、DELETE等方法
+		req, err = http.NewRequest(method, url, nil)
+	}
+
+	if err != nil {
+		log.Printf("创建请求失败: %v", err)
+		w.sendEdgeResponse(requestID, "error", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// 设置请求头
+	if headers, ok := payload["headers"].(map[string]interface{}); ok {
+		for key, value := range headers {
+			if strValues, ok := value.([]interface{}); ok && len(strValues) > 0 {
+				if strValue, ok := strValues[0].(string); ok {
+					req.Header.Set(key, strValue)
+				}
+			}
+		}
+	}
+
+	// 发送请求
+	client := &http.Client{Timeout: 25 * time.Second} // 比云侧超时短
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("请求边侧服务失败: %v", err)
+		w.sendEdgeResponse(requestID, "error", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	var responseData interface{}
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		responseData = map[string]interface{}{
+			"status_code": resp.StatusCode,
+			"status":      resp.Status,
+			"error":       "读取响应体失败",
+		}
+	} else {
+		// 尝试解析为JSON，如果不是JSON则保持原始数据
+		if err := json.Unmarshal(bodyBytes, &responseData); err != nil {
+			responseData = string(bodyBytes)
+		}
+	}
+
+	// 发送响应回云侧
+	w.sendEdgeResponse(requestID, "success", map[string]interface{}{
+		"status_code": resp.StatusCode,
+		"status":      resp.Status,
+		"data":        responseData,
+	})
+}
+
+// sendEdgeResponse 发送边侧请求响应回云侧
+func (w *WSClient) sendEdgeResponse(requestID string, status string, data map[string]interface{}) {
+	response := map[string]interface{}{
+		"type": "edge_response",
+		"payload": map[string]interface{}{
+			"request_id": requestID,
+			"status":     status,
+			"data":       data,
+			"timestamp":  time.Now().Format(time.RFC3339),
+		},
+	}
+
+	if err := w.conn.WriteJSON(response); err != nil {
+		log.Printf("发送边侧响应失败: %v", err)
+	} else {
+		log.Printf("边侧响应已发送: %s", requestID)
+	}
+}
+
+func (w *WSClient) sendHealthResponse() {
+	// 检查本地健康状态
+	healthStatus := "healthy"
+	var healthData map[string]interface{}
+
+	resp, err := http.Get("http://localhost:8919/health")
+	if err != nil {
+		healthStatus = "unhealthy"
+		healthData = map[string]interface{}{
+			"error": err.Error(),
+		}
+	} else {
+		defer resp.Body.Close()
+		json.NewDecoder(resp.Body).Decode(&healthData)
+	}
+
+	response := map[string]interface{}{
+		"type": "health_response",
+		"payload": map[string]interface{}{
+			"client_id": w.clientID,
+			"status":    healthStatus,
+			"data":      healthData,
+			"timestamp": time.Now().Format(time.RFC3339),
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+
+	if err := w.conn.WriteJSON(response); err != nil {
+		log.Printf("发送健康响应失败: %v", err)
+	} else {
+		log.Printf("健康响应已发送")
+	}
+}
+
+func getClientID() string {
+	// 尝试获取稳定的客户端ID
+	if hostname, err := os.Hostname(); err == nil {
+		return fmt.Sprintf("client-%s", hostname)
+	}
+	return fmt.Sprintf("client-%d", time.Now().UnixNano())
+}
+
+func startHealthServer() {
+	healthHandler := NewHealthHandler()
+
+	http.HandleFunc("/health", healthHandler.GetHandler())
+
+	go func() {
+		log.Printf("本地健康检查服务启动在 :8919")
+		if err := http.ListenAndServe(":8919", nil); err != nil {
+			log.Fatalf("健康检查服务启动失败: %v", err)
+		}
+	}()
+}
+
+var startTime = time.Now()
