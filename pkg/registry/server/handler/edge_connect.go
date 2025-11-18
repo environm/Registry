@@ -214,10 +214,20 @@ func (w *WSClient) handleEdgeRequest(msg map[string]interface{}) {
 	path, _ := payload["path"].(string)
 	queryParams, _ := payload["query_params"].(map[string]interface{})
 
-	log.Printf("处理边侧请求: %s %s", method, path)
+	targetPort := 8919 // 默认端口
+	if port, exists := payload["target_port"]; exists {
+		if portNum, ok := port.(float64); ok {
+			targetPort = int(portNum)
+			log.Printf("使用指定端口: %d", targetPort)
+		}
+	} else {
+		log.Printf("未指定端口，使用默认端口: %d", targetPort)
+	}
+
+	log.Printf("处理边侧请求: %s %s (端口: %d)", method, path, targetPort)
 
 	// 构建请求URL
-	url := fmt.Sprintf("http://localhost:8919%s", path)
+	url := fmt.Sprintf("http://localhost:%d%s", targetPort, path)
 	println(url)
 	// 添加查询参数
 	if len(queryParams) > 0 {

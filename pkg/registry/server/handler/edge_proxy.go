@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -63,7 +64,23 @@ func (d *EdgeRequestHandler) NewHandlerFunc() func(w http.ResponseWriter, r *htt
 		if len(requestPath) > len("/edges") {
 			requestPath = requestPath[len("/edges"):]
 		}
-
+		portParam := r.URL.Query().Get("port")
+		var targetPort int
+		if portParam != "" {
+			if port, err := strconv.Atoi(portParam); err == nil && port > 0 && port <= 65535 {
+				targetPort = port
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":     "invalid_port",
+					"message":   "port 参数无效，必须是1-65535之间的数字",
+					"timestamp": time.Now().Format(time.RFC3339),
+				})
+				return
+			}
+		} else {
+			targetPort = 8919 // 默认端口
+		}
 		// 生成请求ID
 		requestID := fmt.Sprintf("edge-req-%d", time.Now().UnixNano())
 
@@ -100,10 +117,11 @@ func (d *EdgeRequestHandler) NewHandlerFunc() func(w http.ResponseWriter, r *htt
 				"query_params": r.URL.Query(),
 				"headers":      r.Header,
 				"body":         requestBody,
+				"target_port":  targetPort,
 			},
 		}
 
-		log.Printf("发送边侧请求到 %s: %s %s", clientID, r.Method, requestPath)
+		log.Printf("发送边侧请求到 %s: %s %s 端口: %d", clientID, r.Method, requestPath, targetPort)
 
 		// 发送请求到边侧设备
 		if err := sendToClient(client, edgeRequestMsg); err != nil {
